@@ -4,7 +4,9 @@ import datetime
 import asyncio
 import discord
 from discord.ext import commands
+from aiohttp import web
 
+# 1. Nastavení databáze SQLite
 def init_db():
     conn = sqlite3.connect("tierbot.db")
     cursor = conn.cursor()
@@ -431,7 +433,6 @@ async def openqueue(interaction: discord.Interaction, kit: str):
     if not target_channel:
         return await interaction.response.send_message("❌ Nastavený kanál pro frontu nebyl na serveru nalezen.", ephemeral=True)
 
-    # Při novém otevření vymažeme hráče, aby byla fronta prázdná
     QUEUES[kit.lower()] = {"players": [], "testers": [interaction.user.id]}
 
     embed = get_queue_embed(kit.lower())
@@ -557,6 +558,26 @@ async def result(interaction: discord.Interaction, discord_hrac: discord.Member,
     except Exception as e:
         print(f"Nelze smazat místnost: {e}")
 
+# Webový server pro UptimeRobot / Render keep-alive
+async def handle_ping(request):
+    return web.Response(text="Bot runs 24/7!")
+
+async def start_web_server():
+    app = web.Application()
+    app.router.add_get("/", handle_ping)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    port = int(os.environ.get("PORT", 8080))
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+    print(f"🌐 Webový server běží na portu {port}")
+
 TOKEN = os.getenv("DISCORD_TOKEN")
+
+async def main():
+    async with bot:
+        await start_web_server()
+        await bot.start(TOKEN)
+
 if __name__ == "__main__":
-    bot.run(TOKEN)
+    asyncio.run(main())
