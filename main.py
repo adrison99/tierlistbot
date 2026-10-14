@@ -7,20 +7,17 @@ from discord.ext import commands
 def init_db():
     conn = sqlite3.connect("tierbot.db")
     cursor = conn.cursor()
-    # Tabulka pro verifikaci hráčů (Discord ID <-> Minecraft IGN)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS verified (
             discord_id TEXT PRIMARY KEY,
             minecraft_ign TEXT
         )
     """)
-    # Tabulka pro kity
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS kits (
             name TEXT PRIMARY KEY
         )
     """)
-    # Tabulka pro propojení kit + tier -> role ID
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS tier_roles (
             kit TEXT,
@@ -29,7 +26,6 @@ def init_db():
             PRIMARY KEY (kit, tier)
         )
     """)
-    # Nastavení speciálních místností a rolí pro server
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS server_settings (
             guild_id TEXT PRIMARY KEY,
@@ -37,14 +33,12 @@ def init_db():
             helper_role TEXT
         )
     """)
-    # Nastavení front pro kity
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS queue_rooms (
             kit TEXT PRIMARY KEY,
             channel_id TEXT
         )
     """)
-    # Historie tierů hráčů (Pro zjištění předchozího tieru)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS player_tiers (
             discord_id TEXT,
@@ -66,15 +60,18 @@ intents.members = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# Seznam povolených tierů
 VALID_TIERS = [
     "LT5", "HT5", "LT4", "HT4", "LT3", "HT3", 
     "RLT2", "LT2", "RHT2", "HT2", "RLT1", "LT1", "RHT1", "HT1"
 ]
 
-# Pomocná funkce na kontrolu oprávnění (Admin má vždy přístup automaticky)
+# Zde si můžeš natvrdo přidat svoje Discord ID, abys měl jistotu, že ti to vždycky půjde!
+# (Stačí nahradit číslo svým skutečným Discord ID, pokud ho znáš, nebo spoléhat na admin práva)
+OWNER_IDS = [] 
+
 async def has_helper_perms(ctx: discord.Interaction) -> bool:
-    if ctx.user.guild_permissions.administrator or ctx.guild.owner_id == ctx.user.id:
+    # Pokud jsi vlastník bota nebo máš admin práva
+    if ctx.user.id in OWNER_IDS or ctx.user.guild_permissions.administrator or ctx.guild.owner_id == ctx.user.id:
         return True
     
     conn = sqlite3.connect("tierbot.db")
@@ -103,8 +100,6 @@ async def on_ready():
     except Exception as e:
         print(f"❌ Chyba synchronizace: {e}")
 
-# --- PŘÍKAZY ---
-
 @bot.tree.command(name="verify", description="Propojí tvůj Discord účet s Minecraft IGN.")
 async def verify(interaction: discord.Interaction, minecraft_ign: str):
     conn = sqlite3.connect("tierbot.db")
@@ -115,7 +110,7 @@ async def verify(interaction: discord.Interaction, minecraft_ign: str):
     conn.close()
     await interaction.response.send_message(f"✅ Úspěšně verifikován Minecraft účet: **{minecraft_ign}**", ephemeral=True)
 
-@bot.tree.command(name="createkit", description="Přidá nový kit do databáze (Pouze helperé).")
+@bot.tree.command(name="createkit", description="Přidá nový kit do databáze.")
 async def createkit(interaction: discord.Interaction, jmeno_kitu: str):
     if not await has_helper_perms(interaction):
         return await interaction.response.send_message("❌ Na tento příkaz nemáš oprávnění!", ephemeral=True)
@@ -174,8 +169,8 @@ async def resultroomset(interaction: discord.Interaction, discord_roomka: discor
 
 @bot.tree.command(name="helperoleset", description="Nastaví roli, která má oprávnění používat tyto příkazy.")
 async def helperoleset(interaction: discord.Interaction, role: discord.Role):
-    if not interaction.user.guild_permissions.administrator and interaction.guild.owner_id != interaction.user.id:
-        return await interaction.response.send_message("❌ Pouze administrátor může měnit helper roli!", ephemeral=True)
+    if not await has_helper_perms(interaction):
+        return await interaction.response.send_message("❌ Na tento příkaz nemáš oprávnění!", ephemeral=True)
         
     conn = sqlite3.connect("tierbot.db")
     cursor = conn.cursor()
@@ -200,7 +195,6 @@ async def queueroomset(interaction: discord.Interaction, discord_roomka: discord
     conn.close()
     await interaction.response.send_message(f"✅ Fronta pro kit **{kit}** svázána s kanálem {discord_roomka.mention}.", ephemeral=True)
 
-# Paměť pro aktivní fronty (Kit -> Seznam ID hráčů)
 QUEUES = {}
 
 class QueueView(discord.ui.View):
@@ -364,7 +358,6 @@ async def result(interaction: discord.Interaction, discord_hrac: discord.Member,
     else:
         await interaction.response.send_message("✅ Výsledek byl úspěšně zaznamenán a odeslán!", ephemeral=True)
 
-# Spuštění bota
 TOKEN = os.getenv("DISCORD_TOKEN")
 if __name__ == "__main__":
     bot.run(TOKEN)
