@@ -41,6 +41,12 @@ def init_db():
         )
     """)
     cursor.execute("""
+        CREATE TABLE IF NOT EXISTS kit_categories (
+            kit TEXT PRIMARY KEY,
+            category_id TEXT
+        )
+    """)
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS player_tiers (
             discord_id TEXT,
             kit TEXT,
@@ -217,55 +223,20 @@ async def queueroomset(interaction: discord.Interaction, discord_roomka: discord
     conn.close()
     await interaction.response.send_message(f"✅ Fronta pro kit **{kit}** svázána s kanálem {discord_roomka.mention}.", ephemeral=True)
 
+@bot.tree.command(name="kitcategoryset", description="Nastaví kategorii, ve které se pro daný kit vytvoří testovací místnost.")
+@discord.app_commands.autocomplete(kit=kit_autocomplete)
+async def kitcategoryset(interaction: discord.Interaction, kit: str, kategorie: discord.CategoryChannel):
+    if not await has_helper_perms(interaction):
+        return await interaction.response.send_message("❌ Na tento příkaz nemáš oprávnění!", ephemeral=True)
+        
+    conn = sqlite3.connect("tierbot.db")
+    cursor = conn.cursor()
+    cursor.execute("INSERT OR REPLACE INTO kit_categories (kit, category_id) VALUES (?, ?)", (kit.lower(), str(kategorie.id)))
+    conn.commit()
+    conn.close()
+    await interaction.response.send_message(f"✅ Pro kit **{kit}** byla nastavena kategorie **{kategorie.name}**.", ephemeral=True)
+
 QUEUES = {}
-
-# Menu pro výběr místnosti, kam se má hráč pullnout
-class RoomSelectView(discord.ui.View):
-    def __init__(self, kit_name: str, player_member: discord.Member):
-        super().__init__(timeout=60)
-        self.kit_name = kit_name
-        self.player_member = player_member
-
-    @discord.ui.select(
-        cls=discord.ui.ChannelSelect,
-        placeholder="Vyber místnost pro pullnutí hráče...",
-        channel_types=[discord.ChannelType.text, discord.ChannelType.voice],
-        min_values=1,
-        max_values=1
-    )
-    async def select_room(self, interaction: discord.Interaction, select: discord.ui.ChannelSelect):
-        chosen_channel = select.values[0]
-
-        # Odebrání hráče z fronty
-        if self.kit_name in QUEUES and self.player_member.id in QUEUES[self.kit_name]["players"]:
-            QUEUES[self.kit_name]["players"].remove(self.player_member.id)
-
-        # Přidání testera do aktivních testerů
-        if interaction.user.id not in QUEUES[self.kit_name]["testers"]:
-            QUEUES[self.kit_name]["testers"].append(interaction.user.id)
-
-        # Aktualizace zprávy s frontou
-        async for message in interaction.channel.history(limit=10):
-            if message.author == bot.user and message.embeds:
-                await message.edit(embed=get_queue_embed(self.kit_name), view=QueueView(self.kit_name))
-                break
-
-        # Nastavení oprávnění / přístupu podle typu kanálu
-        try:
-            if isinstance(chosen_channel, discord.TextChannel):
-                await chosen_channel.set_permissions(self.player_member, view_channel=True, send_messages=True)
-                await chosen_channel.set_permissions(interaction.user, view_channel=True, send_messages=True)
-                await chosen_channel.send(f"⚔️ {self.player_member.mention} byl pullován do této místnosti testerem {interaction.user.mention}! Test začíná.")
-            elif isinstance(chosen_channel, discord.VoiceChannel):
-                await chosen_channel.set_permissions(self.player_member, view_channel=True, connect=True, speak=True)
-                await chosen_channel.set_permissions(interaction.user, view_channel=True, connect=True, speak=True)
-                # Pokud je to hlasovka, pošleme zprávu do chatboxu spojeného s hlasovkou (nebo do výchozího kanálu)
-                if chosen_channel.text_channels:
-                    await chosen_channel.text_channels[0].send(f"⚔️ {self.player_member.mention} byl pullován do hlasovky testerem {interaction.user.mention}!")
-        except Exception as e:
-            print(f"Chyba při nastavování práv: {e}")
-
-        await interaction.response.send_message(f"✅ Hráč {self.player_member.mention} byl úspěšně vytažen a přiřazen do místnosti {chosen_channel.mention}!", ephemeral=True)
 
 class QueueView(discord.ui.View):
     def __init__(self, kit_name: str):
@@ -310,16 +281,52 @@ class QueueView(discord.ui.View):
         if self.kit_name not in QUEUES or not QUEUES[self.kit_name]["players"]:
             return await interaction.response.send_message("⚠️ Fronta je prázdná!", ephemeral=True)
 
-        player_id = QUEUES[self.kit_name]["players"][0]
-        player = interaction.guild.get_member(player_id)
+        # Načtení kategorie pro daný kit
+        conn = sqlite3.connect("tierbot.db")
+        cursor = conn.cursor()
+        cursor.execute("SELECT category_id FROM kit_categories WHERE kit = ?", (self.kit_name.lower(),))
+        cat_row = cursor.fetchone()
         
+        player_id = QUEUES[self.kit_name]["players"][0]
+        cursor.execute("SELECT minecraft_ign FROM verified WHERE discord_id = ?", (str(player_id),))
+        ign_row = cursor.fetchone()
+        conn.close()
+
+        player = interaction.guild.get_member(player_id)
         if not player:
             QUEUES[self.kit_name]["players"].pop(0)
             return await interaction.response.send_message("⚠️ Hráč již není na serveru, byl odstraněn z fronty.", ephemeral=True)
 
-        # Zobrazíme výběr místnosti
-        view = RoomSelectView(self.kit_name, player)
-        await interaction.response.send_message(f"⚔️ Vybíráš místnost pro hráče {player.mention}. Zvol níže v menu:", view=view, ephemeral=True)
+        mc_ign = ign_row[0] if ign_row else player.name
+
+        target_category = None
+        if cat_row and cat_row[0]:
+            target_category = interaction.guild.get_channel(int(cat_row[0]))
+
+        # Vytvoření přístupových práv
+        overwrites = {
+            interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
+            player: discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True),
+            interaction.user: discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True)
+        }
+
+        # Vytvoření kanálu <ign>-test
+        channel_name = f"{mc_ign.lower()}-test"
+        test_channel = await interaction.guild.create_text_channel(
+            name=channel_name,
+            category=target_category if isinstance(target_category, discord.CategoryChannel) else interaction.channel.category,
+            overwrites=overwrites
+        )
+
+        # Odebrání z fronty a přidání testera
+        QUEUES[self.kit_name]["players"].pop(0)
+        if interaction.user.id not in QUEUES[self.kit_name]["testers"]:
+            QUEUES[self.kit_name]["testers"].append(interaction.user.id)
+
+        await update_queue_message(interaction.channel, self.kit_name)
+
+        await test_channel.send(f"⚔️ Test začíná! Tester: {interaction.user.mention} | Hráč: {player.mention}\nPo dokončení zadejte `/result` přímo v tomto kanálu.")
+        await interaction.response.send_message(f"✅ Hráč {player.mention} byl vytažen do místnosti {test_channel.mention}!", ephemeral=True)
 
 def get_queue_embed(kit_name: str):
     data = QUEUES.get(kit_name, {"players": [], "testers": []})
@@ -431,11 +438,16 @@ async def result(interaction: discord.Interaction, discord_hrac: discord.Member,
     embed.add_field(name="👤 Hráč (Discord)", value=discord_hrac.mention, inline=True)
     embed.add_field(name="🎮 Minecraft IGN", value=mc_ign, inline=True)
     embed.add_field(name="⚔️ Tester", value=interaction.user.mention, inline=True)
-    embed.add_field(name="📊 Skóre / Výsledek", value="3–0 (Tester vyhrál)", inline=False)
     embed.add_field(name="📉 Předchozí tier", value=prev_tier, inline=True)
     embed.add_field(name="📈 Nový tier", value=tier, inline=True)
     embed.set_footer(text=dnes)
 
+    # Přidání skinu hráče přes Visage API (na základě IGN z NameMC/Minecraft)
+    if mc_ign != "Neznámý":
+        skin_url = f"https://visage.surgeplay.com/bust/512/{mc_ign}"
+        embed.set_thumbnail(url=skin_url)
+
+    # Odeslání do result místnosti
     if settings_row and settings_row[0]:
         room_id = int(settings_row[0])
         room = interaction.guild.get_channel(room_id)
@@ -446,7 +458,13 @@ async def result(interaction: discord.Interaction, discord_hrac: discord.Member,
     else:
         await interaction.channel.send(content=f"📢 **Nový výsledek pro {kit}!** | Hráč: {discord_hrac.mention} | Tester: {interaction.user.mention}", embed=embed)
     
-    await interaction.response.send_message("✅ Výsledek byl úspěšně zaznamenán a odeslán!", ephemeral=True)
+    # Odpověď a smazání testovací místnosti
+    await interaction.response.send_message("✅ Výsledek byl úspěšně zaznamenán a tato místnost bude za chvíli smazána.", ephemeral=True)
+    await asyncio.sleep(3)
+    try:
+        await interaction.channel.delete()
+    except Exception as e:
+        print(f"Nelze smazat místnost: {e}")
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 if __name__ == "__main__":
