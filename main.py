@@ -37,7 +37,7 @@ TRANSLATIONS = {
         "queue_title": "📝 {kit} Waitlist",
         "queue_desc": "⏱️ Fronta se aktualizuje automaticky.\nPoužij tlačítka níže pro přidání nebo odebrání.",
         "closed_title": "🔒 {kit} Queue",
-        "closed_desc": "Queue momentálně není otevřená. Počkej na Testera, který ji otevře.",
+        "closed_desc": "Queue momentálně není otevřená. Počkej na Testera, který ji otevře.\n\n**Naposledy zavřeno**",
         "result_title": "📝 Výsledek tier testu – {kit}",
         "result_desc": "Tier test byl úspěšně dokončen pro frontu **{kit}**!",
         "result_sent": "✅ Výsledek byl úspěšně zaznamenán a tato místnost bude za chvíli smazána.",
@@ -78,7 +78,7 @@ TRANSLATIONS = {
         "queue_title": "📝 {kit} Waitlist",
         "queue_desc": "⏱️ Queue updates automatically.\nUse buttons below to join or leave.",
         "closed_title": "🔒 {kit} Queue",
-        "closed_desc": "Queue is currently closed. Wait for a Tester to open it.",
+        "closed_desc": "Queue is currently closed. Wait for a Tester to open it.\n\n**Last closed**",
         "result_title": "📝 Tier Test Result – {kit}",
         "result_desc": "Tier test successfully completed for queue **{kit}**!",
         "result_sent": "✅ Result recorded, this channel will be deleted shortly.",
@@ -188,7 +188,6 @@ async def on_ready():
     except Exception as e:
         print(f"❌ Chyba synchronizace: {e}")
 
-# --- NOVÉ PŘÍKAZY PRO ZÁLOHU A OBNOVU DATABÁZE ---
 @bot.tree.command(name="databaseinfo", description="Vygeneruje textový kód pro zálohu nastavení serveru.")
 async def databaseinfo(interaction: discord.Interaction):
     if not await has_helper_perms(interaction):
@@ -197,27 +196,16 @@ async def databaseinfo(interaction: discord.Interaction):
     guild_id = str(interaction.guild.id)
     conn = sqlite3.connect("tierbot.db")
     cursor = conn.cursor()
-
-    # Získání nastavení serveru
     cursor.execute("SELECT result_room, helper_role, language, cooldown_lt, cooldown_ht FROM server_settings WHERE guild_id = ?", (guild_id,))
     settings = cursor.fetchone()
-
-    # Získání kitů
     cursor.execute("SELECT name FROM kits")
     kits = [row[0] for row in cursor.fetchall()]
-
-    # Získání rolí pro tiery
     cursor.execute("SELECT kit, tier, role_id FROM tier_roles")
     tier_roles = cursor.fetchall()
-
-    # Získání queue místností
     cursor.execute("SELECT kit, channel_id FROM queue_rooms")
     queue_rooms = cursor.fetchall()
-
-    # Získání kategorií
     cursor.execute("SELECT kit, category_id FROM kit_categories")
     kit_categories = cursor.fetchall()
-
     conn.close()
 
     lines = []
@@ -229,23 +217,15 @@ async def databaseinfo(interaction: discord.Interaction):
         if result_room: lines.append(f"resultroom:{result_room}")
         if helper_role: lines.append(f"helperrole:{helper_role}")
 
-    for kit in kits:
-        lines.append(f"kit:{kit}")
-
-    for kit, tier, role_id in tier_roles:
-        lines.append(f"tierrole:{kit}|{tier}|{role_id}")
-
-    for kit, channel_id in queue_rooms:
-        lines.append(f"queueroom:{kit}|{channel_id}")
-
-    for kit, category_id in kit_categories:
-        lines.append(f"kitcat:{kit}|{category_id}")
+    for kit in kits: lines.append(f"kit:{kit}")
+    for kit, tier, role_id in tier_roles: lines.append(f"tierrole:{kit}|{tier}|{role_id}")
+    for kit, channel_id in queue_rooms: lines.append(f"queueroom:{kit}|{channel_id}")
+    for kit, category_id in kit_categories: lines.append(f"kitcat:{kit}|{category_id}")
 
     backup_text = ";;".join(lines)
     if not backup_text:
         return await interaction.response.send_message("⚠️ V databázi nejsou uložena žádná nastavení k zálohování.", ephemeral=True)
 
-    # Poslání do soukromé zprávy, ať to nešamuje v chatu
     try:
         await interaction.user.send(f"📋 **Záloha databáze (zasetí do /database):**\n```text\n{backup_text}\n```")
         await interaction.response.send_message("✅ Záloha databáze ti byla odeslána do soukromých zpráv (DM).", ephemeral=True)
@@ -260,15 +240,12 @@ async def database(interaction: discord.Interaction, kod: str):
     guild_id = str(interaction.guild.id)
     conn = sqlite3.connect("tierbot.db")
     cursor = conn.cursor()
-
     items = kod.split(";;")
     count = 0
 
     for item in items:
-        if ":" not in item:
-            continue
+        if ":" not in item: continue
         key, val = item.split(":", 1)
-
         if key == "lang":
             cursor.execute("INSERT INTO server_settings (guild_id, language) VALUES (?, ?) ON CONFLICT(guild_id) DO UPDATE SET language = ?", (guild_id, val, val))
             count += 1
@@ -305,10 +282,8 @@ async def database(interaction: discord.Interaction, kod: str):
 
     conn.commit()
     conn.close()
-
     await interaction.response.send_message(f"✅ Úspěšně obnoveno/nastaveno **{count}** položek z databázového kódu!", ephemeral=True)
 
-# --- OSTATNÍ PŘÍKAZY ---
 @bot.tree.command(name="language", description="Změní jazyk bota pro tento server.")
 @discord.app_commands.choices(jazyk=[
     discord.app_commands.Choice(name="🇨🇿 Čeština", value="cs"),
@@ -638,12 +613,15 @@ async def closequeue(interaction: discord.Interaction, kit: str):
     if row and row[0]:
         target_channel = interaction.guild.get_channel(int(row[0]))
         if target_channel:
+            # Přesné zobrazení timestampu zavření jako na tvém screenshotu
+            dnes = datetime.datetime.now()
+            unix_timestamp = int(dnes.timestamp())
+            
             closed_embed = discord.Embed(
                 title=get_msg(interaction.guild.id, "closed_title", kit=kit.capitalize()),
-                description=get_msg(interaction.guild.id, "closed_desc"),
+                description=f"{get_msg(interaction.guild.id, 'closed_desc')}\n\n<t:{unix_timestamp}:R>\n{dnes.strftime('%d.%m.%Y %H:%M')}",
                 color=discord.Color.red()
             )
-            closed_embed.set_footer(text=datetime.datetime.now().strftime("%d.%m.%Y %H:%M"))
             
             async for message in target_channel.history(limit=10):
                 if message.author == bot.user and message.embeds:
