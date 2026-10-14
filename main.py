@@ -52,7 +52,6 @@ def init_db():
 
 init_db()
 
-# 2. Inicializace bota
 intents = discord.Intents.default()
 intents.message_content = True
 intents.guilds = True
@@ -65,12 +64,10 @@ VALID_TIERS = [
     "RLT2", "LT2", "RHT2", "HT2", "RLT1", "LT1", "RHT1", "HT1"
 ]
 
-# Zde si můžeš natvrdo přidat svoje Discord ID, abys měl jistotu, že ti to vždycky půjde!
-# (Stačí nahradit číslo svým skutečným Discord ID, pokud ho znáš, nebo spoléhat na admin práva)
+# Sem si můžeš případně doplnit své Discord ID pro jistotu plných práv
 OWNER_IDS = [] 
 
 async def has_helper_perms(ctx: discord.Interaction) -> bool:
-    # Pokud jsi vlastník bota nebo máš admin práva
     if ctx.user.id in OWNER_IDS or ctx.user.guild_permissions.administrator or ctx.guild.owner_id == ctx.user.id:
         return True
     
@@ -90,6 +87,27 @@ async def has_helper_perms(ctx: discord.Interaction) -> bool:
             pass
             
     return False
+
+# --- AUTOMATICKÉ DOPLŇOVÁNÍ (Autocomplete) pro kity z databáze ---
+async def kit_autocomplete(interaction: discord.Interaction, current: str):
+    conn = sqlite3.connect("tierbot.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT name FROM kits")
+    rows = cursor.fetchall()
+    conn.close()
+    
+    kits = [row[0] for row in rows]
+    return [
+        discord.app_commands.Choice(name=kit, value=kit)
+        for kit in kits if current.lower() in kit.lower()
+    ]
+
+# Autocomplete pro tiery
+async def tier_autocomplete(interaction: discord.Interaction, current: str):
+    return [
+        discord.app_commands.Choice(name=tier, value=tier)
+        for tier in VALID_TIERS if current.lower() in tier.lower()
+    ]
 
 @bot.event
 async def on_ready():
@@ -120,13 +138,14 @@ async def createkit(interaction: discord.Interaction, jmeno_kitu: str):
     try:
         cursor.execute("INSERT INTO kits (name) VALUES (?)", (jmeno_kitu.lower(),))
         conn.commit()
-        await interaction.response.send_message(f"✅ Kit **{jmeno_kitu}** byl úspěšně přidán.", ephemeral=True)
+        await interaction.response.send_message(f"✅ Kit **{jmeno_kitu}** byl úspěšně přidán do databáze.", ephemeral=True)
     except sqlite3.IntegrityError:
-        await interaction.response.send_message(f"⚠️ Kit **{jmeno_kitu}** již existuje.", ephemeral=True)
+        await interaction.response.send_message(f"⚠️ Kit **{jmeno_kitu}** již v databázi existuje.", ephemeral=True)
     finally:
         conn.close()
 
 @bot.tree.command(name="removekit", description="Odstraní kit z databáze.")
+@discord.app_commands.autocomplete(kit=kit_autocomplete)
 async def removekit(interaction: discord.Interaction, kit: str):
     if not await has_helper_perms(interaction):
         return await interaction.response.send_message("❌ Na tento příkaz nemáš oprávnění!", ephemeral=True)
@@ -139,6 +158,7 @@ async def removekit(interaction: discord.Interaction, kit: str):
     await interaction.response.send_message(f"🗑️ Kit **{kit}** byl odstraněn.", ephemeral=True)
 
 @bot.tree.command(name="tieroleset", description="Nastaví roli pro daný kit a tier.")
+@discord.app_commands.autocomplete(kit=kit_autocomplete, tier=tier_autocomplete)
 async def tieroleset(interaction: discord.Interaction, kit: str, tier: str, role: discord.Role):
     if not await has_helper_perms(interaction):
         return await interaction.response.send_message("❌ Na tento příkaz nemáš oprávnění!", ephemeral=True)
@@ -184,6 +204,7 @@ async def helperoleset(interaction: discord.Interaction, role: discord.Role):
     await interaction.response.send_message(f"✅ Helper role nastavena na {role.mention}.", ephemeral=True)
 
 @bot.tree.command(name="queueroomset", description="Nastaví textový kanál pro frontu daného kitu.")
+@discord.app_commands.autocomplete(kit=kit_autocomplete)
 async def queueroomset(interaction: discord.Interaction, discord_roomka: discord.TextChannel, kit: str):
     if not await has_helper_perms(interaction):
         return await interaction.response.send_message("❌ Na tento příkaz nemáš oprávnění!", ephemeral=True)
@@ -277,6 +298,7 @@ async def update_queue_message(channel, kit_name):
     await channel.send(embed=embed, view=QueueView(kit_name))
 
 @bot.tree.command(name="openqueue", description="Otevře queue pro daný kit.")
+@discord.app_commands.autocomplete(kit=kit_autocomplete)
 async def openqueue(interaction: discord.Interaction, kit: str):
     if not await has_helper_perms(interaction):
         return await interaction.response.send_message("❌ Na tento příkaz nemáš oprávnění!", ephemeral=True)
@@ -292,6 +314,7 @@ async def openqueue(interaction: discord.Interaction, kit: str):
     await interaction.response.send_message(embed=embed, view=QueueView(kit.lower()))
 
 @bot.tree.command(name="result", description="Odešle výsledek testu do result místnosti.")
+@discord.app_commands.autocomplete(kit=kit_autocomplete, tier=tier_autocomplete)
 async def result(interaction: discord.Interaction, discord_hrac: discord.Member, kit: str, tier: str):
     if not await has_helper_perms(interaction):
         return await interaction.response.send_message("❌ Na tento příkaz nemáš oprávnění!", ephemeral=True)
