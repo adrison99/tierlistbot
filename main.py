@@ -218,7 +218,6 @@ async def queueroomset(interaction: discord.Interaction, discord_roomka: discord
     conn.close()
     await interaction.response.send_message(f"✅ Fronta pro kit **{kit}** svázána s kanálem {discord_roomka.mention}.", ephemeral=True)
 
-# Paměť front: Kit -> {"players": [id], "testers": [id]}
 QUEUES = {}
 
 class QueueView(discord.ui.View):
@@ -264,7 +263,6 @@ class QueueView(discord.ui.View):
         if self.kit_name not in QUEUES or not QUEUES[self.kit_name]["players"]:
             return await interaction.response.send_message("⚠️ Fronta je prázdná!", ephemeral=True)
 
-        # Přidáme testera do aktivních testerů, pokud tam ještě není
         if interaction.user.id not in QUEUES[self.kit_name]["testers"]:
             QUEUES[self.kit_name]["testers"].append(interaction.user.id)
 
@@ -322,7 +320,6 @@ async def openqueue(interaction: discord.Interaction, kit: str):
     if not await has_helper_perms(interaction):
         return await interaction.response.send_message("❌ Na tento příkaz nemáš oprávnění!", ephemeral=True)
     
-    # Zjištění nastavené roomky pro tento kit
     conn = sqlite3.connect("tierbot.db")
     cursor = conn.cursor()
     cursor.execute("SELECT channel_id FROM queue_rooms WHERE kit = ?", (kit.lower(),))
@@ -340,12 +337,11 @@ async def openqueue(interaction: discord.Interaction, kit: str):
     if kit.lower() not in QUEUES:
         QUEUES[kit.lower()] = {"players": [], "testers": [interaction.user.id]}
     else:
-        if interaction.user.id not in QUEUES[kit.lower"]["testers"]:
+        if interaction.user.id not in QUEUES[kit.lower()]["testers"]:
             QUEUES[kit.lower()]["testers"].append(interaction.user.id)
 
     embed = get_queue_embed(kit.lower())
     
-    # Odeslání zprávy s @everyone do správného kanálu
     await target_channel.send(content="@everyone", embed=embed, view=QueueView(kit.lower()))
     await interaction.response.send_message(f"✅ Fronta pro kit **{kit}** byla úspěšně otevřena v kanálu {target_channel.mention}!", ephemeral=True)
 
@@ -362,7 +358,6 @@ async def result(interaction: discord.Interaction, discord_hrac: discord.Member,
     cursor = conn.cursor()
     cursor.execute("SELECT minecraft_ign FROM verified WHERE discord_id = ?", (str(discord_hrac.id),))
     row = cursor.fetchone()
-    mc_ign = row[0] if row else "Neznámý"
 
     cursor.execute("SELECT tier FROM player_tiers WHERE discord_id = ? AND kit = ?", (str(discord_hrac.id), kit.lower()))
     prev_row = cursor.fetchone()
@@ -378,6 +373,8 @@ async def result(interaction: discord.Interaction, discord_hrac: discord.Member,
     settings_row = cursor.fetchone()
     conn.commit()
     conn.close()
+
+    mc_ign = row[0] if row else "Neznámý"
 
     if role_row and role_row[0]:
         role = interaction.guild.get_role(int(role_row[0]))
@@ -402,7 +399,6 @@ async def result(interaction: discord.Interaction, discord_hrac: discord.Member,
     embed.add_field(name="📈 Nový tier", value=tier, inline=True)
     embed.set_footer(text=dnes)
 
-    # Odeslání do nastavené result místnosti z /resultroomset
     if settings_row and settings_row[0]:
         room_id = int(settings_row[0])
         room = interaction.guild.get_channel(room_id)
