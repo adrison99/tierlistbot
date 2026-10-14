@@ -20,6 +20,7 @@ TRANSLATIONS = {
         "queue_room_set": "✅ Fronta pro kit **{kit}** svázána s kanálem {room}.",
         "kit_cat_set": "✅ Pro kit **{kit}** byla nastavena kategorie **{cat}**.",
         "lang_set": "🌐 Jazyk serveru byl změněn na **Čeština**.",
+        "cooldown_set": "⏳ Cooldown pro **{tipo}** úspěšně nastaven na **{time}**.",
         "queue_opened": "✅ Fronta pro kit **{kit}** byla úspěšně otevřena v kanálu {room}!",
         "queue_closed": "🔒 Fronta pro kit **{kit}** byla uzavřena.",
         "cannot_close_active": "⚠️ Nemůžeš zavřít frontu, protože v ní stále probíhají testy!",
@@ -57,6 +58,7 @@ TRANSLATIONS = {
         "queue_room_set": "✅ Queue for kit **{kit}** bound to channel {room}.",
         "kit_cat_set": "✅ Category **{cat}** set for kit **{kit}**.",
         "lang_set": "🌐 Server language set to **English (British)**.",
+        "cooldown_set": "⏳ Cooldown for **{tipo}** successfully set to **{time}**.",
         "queue_opened": "✅ Queue for kit **{kit}** successfully opened in channel {room}!",
         "queue_closed": "🔒 Queue for kit **{kit}** has been closed.",
         "cannot_close_active": "⚠️ Cannot close queue while testing is ongoing!",
@@ -94,6 +96,7 @@ TRANSLATIONS = {
         "queue_room_set": "✅ Queue for kit **{kit}** linked to channel {room}.",
         "kit_cat_set": "✅ Category **{cat}** set for kit **{kit}**.",
         "lang_set": "🌐 Server language set to **English (American)**.",
+        "cooldown_set": "⏳ Cooldown for **{tipo}** successfully set to **{time}**.",
         "queue_opened": "✅ Queue for kit **{kit}** successfully opened in channel {room}!",
         "queue_closed": "🔒 Queue for kit **{kit}** has been closed.",
         "cannot_close_active": "⚠️ Cannot close queue while tests are in progress!",
@@ -131,6 +134,7 @@ TRANSLATIONS = {
         "queue_room_set": "✅ Fronta pre kit **{kit}** zviazaná s kanálom {room}.",
         "kit_cat_set": "✅ Pre kit **{kit}** bola nastavená kategória **{cat}**.",
         "lang_set": "🌐 Jazyk servera bol zmenený na **Slovenčinu**.",
+        "cooldown_set": "⏳ Cooldown pre **{tipo}** úspešne nastavený na **{time}**.",
         "queue_opened": "✅ Fronta pre kit **{kit}** bola úspešne otvorená v kanáli {room}!",
         "queue_closed": "🔒 Fronta pre kit **{kit}** bola zatvorená.",
         "cannot_close_active": "⚠️ Nemôžeš zatvoriť frontu, pretože v nej stále prebiehajú testy!",
@@ -168,178 +172,183 @@ TRANSLATIONS = {
         "queue_room_set": "✅ Warteschlange für Kit **{kit}** an Kanal {room} gebunden.",
         "kit_cat_set": "✅ Kategorie **{cat}** für Kit **{kit}** festgelegt.",
         "lang_set": "🌐 Serversprache auf **Deutsch** geändert.",
+        "cooldown_set": "⏳ Cooldown für **{tipo}** erfolgreich auf **{time}** gesetzt.",
         "queue_opened": "✅ Warteschlange für Kit **{kit}** in Kanal {room} geöffnet!",
         "queue_closed": "🔒 Warteschlange für Kit **{kit}** wurde geschlossen.",
         "cannot_close_active": "⚠️ Warteschlange kann während aktiver Tests nicht geschlossen werden!",
         "tester_joined": "✅ Erfogreich als aktiver Tester für Kit **{kit}** beigetreten.",
         "tester_left": "✅ Als aktiver Tester für Kit **{kit}** entfernt.",
-        "already_tester": "⚠️ Du bist bereits als Tester in dieser Warteschlange eingetragen!",
-        "not_tester": "⚠️ Du bist kein aktiver Tester in dieser Warteschlange.",
-        "join_btn": "Warteschlange beitreten",
-        "leave_btn": "Warteschlange verlassen",
-        "pull_btn": "Spieler ziehen ⚔️",
-        "queue_empty": "_Warteschlange ist leer. Sei der Erste!_",
-        "no_testers": "_Keine aktiven Tester._",
-        "active_testers": "Aktive Tester",
-        "queue_title": "📝 {kit} Warteliste",
-        "queue_desc": "⏱️ Warteschlange aktualisiert sich automatisch.",
-        "result_title": "📝 Tier-Testergebnis – {kit}",
-        "result_desc": "Tier-Test für Kit **{kit}** erfolgreich abgeschlossen!",
-        "result_sent": "✅ Ergebnis gespeichert, Kanal wird in Kürze gelöscht.",
-        "test_started": "⚔️ Test startet! Tester: {tester} | Spieler: {player}",
-        "player_pulled": "✅ Spieler {player} in Kanal {room} gezogen!",
-        "not_verified": "❌ Bitte verifiziere dich zuerst mit `/verify <minecraft ign>`!",
-        "already_in_queue": "⚠️ Du bist bereits in dieser Warteschlange!",
-        "left_queue": "✅ Warteschlange verlassen.",
-        "not_in_queue": "⚠️ Du bist nicht in dieser Warteschlange."
+        "already_tester": "⚠️ Du bist bereits als Tester eingetragen!",
+        "not_tester": "⚠️ Du bist kein aktiver Tester.",
+        "join_btn": "Beitreten",
+        "leave_btn": "Verlassen",
+        "pull_btn": "Ziehen ⚔️",
+        "queue_empty": "_Leer._",
+        "no_testers": "_Keine Tester._",
+        "active_testers": "Tester",
+        "queue_title": "📝 {kit}",
+        "queue_desc": "⏱️ Update...",
+        "result_title": "📝 Ergebnis – {kit}",
+        "result_desc": "Test beendet!",
+        "result_sent": "✅ Gespeichert.",
+        "test_started": "⚔️ Start!",
+        "player_pulled": "✅ Spieler gezogen!",
+        "not_verified": "❌ Bitte verifiziere dich!",
+        "already_in_queue": "⚠️ Du bist bereits drin!",
+        "left_queue": "✅ Verlassen.",
+        "not_in_queue": "⚠️ Du bist nicht drin."
     },
     "fr": {
-        "no_perms": "❌ Vous n'avez pas la permission d'utiliser cette commande !",
-        "verified_success": "✅ Compte Minecraft vérifié avec succès : **{ign}**",
-        "kit_created": "✅ Le kit **{kit}** a été ajouté à la base de données.",
-        "kit_exists": "⚠️ Le kit **{kit}** existe déjà.",
-        "kit_removed": "🗑️ Le kit **{kit}** a été supprimé.",
-        "tier_role_set": "✅ Rôle **{role}** défini pour le kit **{kit}** et le tier **{tier}**.",
-        "result_room_set": "✅ Salon des résultats défini sur {room}.",
-        "helper_role_set": "✅ Rôle Helper défini sur {role}.",
-        "queue_room_set": "✅ File d'attente pour le kit **{kit}** liée au salon {room}.",
-        "kit_cat_set": "✅ Catégorie **{cat}** définie pour le kit **{kit}**.",
-        "lang_set": "🌐 Langue du serveur changée en **Français**.",
-        "queue_opened": "✅ File d'attente pour le kit **{kit}** ouverte dans {room} !",
-        "queue_closed": "🔒 File d'attente pour le kit **{kit}** fermée.",
-        "cannot_close_active": "⚠️ Impossible de fermer la file d'attente pendant les tests actifs !",
-        "tester_joined": "✅ Ajouté comme testeur actif pour le kit **{kit}**.",
-        "tester_left": "✅ Retiré des testeurs actifs pour le kit **{kit}**.",
-        "already_tester": "⚠️ Vous êtes déjà inscrit comme testeur !",
-        "not_tester": "⚠️ Vous n'êtes pas testeur actif dans cette file.",
-        "join_btn": "Rejoindre la file",
-        "leave_btn": "Quitter la file",
-        "pull_btn": "Tirer le joueur ⚔️",
-        "queue_empty": "_File vide. Soyez le premier !_",
-        "no_testers": "_Aucun testeur actif._",
-        "active_testers": "Testeurs Actifs",
-        "queue_title": "📝 File d'attente {kit}",
-        "queue_desc": "⏱️ La file s'actualise automatiquement.",
-        "result_title": "📝 Résultat du Test Tier – {kit}",
-        "result_desc": "Test réussi pour le kit **{kit}** !",
-        "result_sent": "✅ Résultat enregistré, salon en cours de suppression.",
-        "test_started": "⚔️ Le test commence ! Testeur: {tester} | Joueur: {player}",
-        "player_pulled": "✅ Joueur {player} tiré dans le salon {room} !",
-        "not_verified": "❌ Veuillez vous vérifier avec `/verify <minecraft ign>` !",
-        "already_in_queue": "⚠️ Vous êtes déjà dans cette file !",
-        "left_queue": "✅ Vous avez quitté la file.",
-        "not_in_queue": "⚠️ Vous n'êtes pas dans cette file."
+        "no_perms": "❌ Pas la permission !",
+        "verified_success": "✅ Compte vérifié : **{ign}**",
+        "kit_created": "✅ Kit **{kit}** ajouté.",
+        "kit_exists": "⚠️ Kit existe déjà.",
+        "kit_removed": "🗑️ Kit supprimé.",
+        "tier_role_set": "✅ Rôle défini.",
+        "result_room_set": "✅ Salon défini.",
+        "helper_role_set": "✅ Rôle Helper défini.",
+        "queue_room_set": "✅ File liée.",
+        "kit_cat_set": "✅ Catégorie définie.",
+        "lang_set": "🌐 Langue changée.",
+        "cooldown_set": "⏳ Cooldown défini à **{time}** pour **{tipo}**.",
+        "queue_opened": "✅ File ouverte !",
+        "queue_closed": "🔒 File fermée.",
+        "cannot_close_active": "⚠️ Tests en cours !",
+        "tester_joined": "✅ Testeur rejoint.",
+        "tester_left": "✅ Testeur parti.",
+        "already_tester": "⚠️ Déjà testeur.",
+        "not_tester": "⚠️ Pas testeur.",
+        "join_btn": "Rejoindre",
+        "leave_btn": "Quitter",
+        "pull_btn": "Tirer ⚔️",
+        "queue_empty": "_Vide._",
+        "no_testers": "_Aucun._",
+        "active_testers": "Testeurs",
+        "queue_title": "📝 {kit}",
+        "queue_desc": "⏱️ Auto",
+        "result_title": "📝 Résultat – {kit}",
+        "result_desc": "Terminé !",
+        "result_sent": "✅ Enregistré.",
+        "test_started": "⚔️ C'est parti !",
+        "player_pulled": "✅ Tiré !",
+        "not_verified": "❌ Vérifiez-vous !",
+        "already_in_queue": "⚠️ Déjà dedans !",
+        "left_queue": "✅ Parti.",
+        "not_in_queue": "⚠️ Pas dedans."
     },
     "ru": {
-        "no_perms": "❌ У вас нет прав для выполнения этой команды!",
-        "verified_success": "✅ Аккаунт Minecraft успешно привязан: **{ign}**",
-        "kit_created": "✅ Набор **{kit}** успешно добавлен в базу данных.",
-        "kit_exists": "⚠️ Набор **{kit}** уже существует.",
-        "kit_removed": "🗑️ Набор **{kit}** был удален.",
-        "tier_role_set": "✅ Роль **{role}** установлена для набора **{kit}** и уровня **{tier}**.",
-        "result_room_set": "✅ Канал результатов установлен на {room}.",
-        "helper_role_set": "✅ Роль помощника установлена на {role}.",
-        "queue_room_set": "✅ Очередь для набора **{kit}** привязана к каналу {room}.",
-        "kit_cat_set": "✅ Категория **{cat}** установлена для набора **{kit}**.",
-        "lang_set": "🌐 Язык сервера изменен на **Русский**.",
-        "queue_opened": "✅ Очередь для набора **{kit}** открыта в канале {room}!",
-        "queue_closed": "🔒 Очередь для набора **{kit}** закрыта.",
-        "cannot_close_active": "⚠️ Нельзя закрыть очередь во время активных тестов!",
-        "tester_joined": "✅ Вы успешно записались как активный тестер для набора **{kit}**.",
-        "tester_left": "✅ Вы удалены из списка активных тестеров набора **{kit}**.",
-        "already_tester": "⚠️ Вы уже записаны как тестер в этой очереди!",
-        "not_tester": "⚠️ Вы не являетесь активным тестером в этой очереди.",
-        "join_btn": "Войти в очередь",
-        "leave_btn": "Выйти из очереди",
-        "pull_btn": "Вызвать игрока ⚔️",
-        "queue_empty": "_Очередь пуста. Будьте первым!_",
-        "no_testers": "_Нет активных тестеров._",
-        "active_testers": "Активные Тестеры",
-        "queue_title": "📝 Очередь {kit}",
-        "queue_desc": "⏱️ Очередь обновляется автоматически.",
-        "result_title": "📝 Результат теста – {kit}",
-        "result_desc": "Тест успешно завершен для набора **{kit}**!",
-        "result_sent": "✅ Результат записан, канал скоро будет удален.",
-        "test_started": "⚔️ Тест начался! Тестер: {tester} | Игрок: {player}",
-        "player_pulled": "✅ Игрок {player} вызван в канал {room}!",
-        "not_verified": "❌ Сначала авторизуйтесь через `/verify <minecraft ign>`!",
-        "already_in_queue": "⚠️ Вы уже в очереди!",
-        "left_queue": "✅ Вы вышли из очереди.",
-        "not_in_queue": "⚠️ Вы не в очереди."
+        "no_perms": "❌ Нет прав!",
+        "verified_success": "✅ Привязано: **{ign}**",
+        "kit_created": "✅ Набор создан.",
+        "kit_exists": "⚠️ Уже есть.",
+        "kit_removed": "🗑️ Удалено.",
+        "tier_role_set": "✅ Роль установлена.",
+        "result_room_set": "✅ Канал результатов.",
+        "helper_role_set": "✅ Роль хелпера.",
+        "queue_room_set": "✅ Очередь привязана.",
+        "kit_cat_set": "✅ Категория.",
+        "lang_set": "🌐 Язык изменен.",
+        "cooldown_set": "⏳ Кулдаун для **{tipo}** установлен на **{time}**.",
+        "queue_opened": "✅ Открыто!",
+        "queue_closed": "🔒 Закрыто.",
+        "cannot_close_active": "⚠️ Идут тесты!",
+        "tester_joined": "✅ Тестер вошел.",
+        "tester_left": "✅ Тестер вышел.",
+        "already_tester": "⚠️ Вы уже тестер.",
+        "not_tester": "⚠️ Вы не тестер.",
+        "join_btn": "Войти",
+        "leave_btn": "Выйти",
+        "pull_btn": "Вызвать ⚔️",
+        "queue_empty": "_Пусто._",
+        "no_testers": "_Нет._",
+        "active_testers": "Тестеры",
+        "queue_title": "📝 {kit}",
+        "queue_desc": "⏱️ Авто",
+        "result_title": "📝 Результат – {kit}",
+        "result_desc": "Готово!",
+        "result_sent": "✅ Сохранено.",
+        "test_started": "⚔️ Началось!",
+        "player_pulled": "✅ Вызван!",
+        "not_verified": "❌ Верифицируйтесь!",
+        "already_in_queue": "⚠️ Уже в очереди!",
+        "left_queue": "✅ Вышли.",
+        "not_in_queue": "⚠️ Вас нет."
     },
     "it": {
-        "no_perms": "❌ Non hai i permessi per usare questo comando!",
-        "verified_success": "✅ Account Minecraft verificato con successo: **{ign}**",
-        "kit_created": "✅ Il kit **{kit}** è stato aggiunto al database.",
-        "kit_exists": "⚠️ Il kit **{kit}** esiste già.",
-        "kit_removed": "🗑️ Il kit **{kit}** è stato rimosso.",
-        "tier_role_set": "✅ Ruolo **{role}** impostato per il kit **{kit}** e tier **{tier}**.",
-        "result_room_set": "✅ Canale risultati impostato su {room}.",
-        "helper_role_set": "✅ Ruolo Helper impostato su {role}.",
-        "queue_room_set": "✅ Coda per il kit **{kit}** collegata al canale {room}.",
-        "kit_cat_set": "✅ Categoria **{cat}** impostata per il kit **{kit}**.",
-        "lang_set": "🌐 Lingua del server impostata su **Italiano**.",
-        "queue_opened": "✅ Coda per il kit **{kit}** aperta nel canale {room}!",
-        "queue_closed": "🔒 Coda per il kit **{kit}** chiusa.",
-        "cannot_close_active": "⚠️ Impossibile chiudere la coda con test attivi!",
-        "tester_joined": "✅ Aggiunto come tester attivo per il kit **{kit}**.",
-        "tester_left": "✅ Rimosso dai tester attivi per il kit **{kit}**.",
-        "already_tester": "⚠️ Sei già registrato come tester in questa coda!",
-        "not_tester": "⚠️ Non sei un tester attivo in questa coda.",
-        "join_btn": "Entra in coda",
-        "leave_btn": "Esci dalla coda",
-        "pull_btn": "Pulla giocatore ⚔️",
-        "queue_empty": "_La coda è vuota. Sii il primo!_",
-        "no_testers": "_Nessun tester attivo._",
-        "active_testers": "Tester Attivi",
-        "queue_title": "📝 Coda {kit}",
-        "queue_desc": "⏱️ La coda si aggiorna automaticamente.",
-        "result_title": "📝 Risultato Test Tier – {kit}",
-        "result_desc": "Test completato con successo per il kit **{kit}**!",
-        "result_sent": "✅ Risultato registrato, il canale verrà eliminato a breve.",
-        "test_started": "⚔️ Il test inizia! Tester: {tester} | Giocatore: {player}",
-        "player_pulled": "✅ Giocatore {player} spostato nel canale {room}!",
-        "not_verified": "❌ Verificati prima con `/verify <minecraft ign>`!",
-        "already_in_queue": "⚠️ Sei già in questa coda!",
-        "left_queue": "✅ Sei uscito dalla coda.",
-        "not_in_queue": "⚠️ Non sei in questa coda."
+        "no_perms": "❌ Senza permessi!",
+        "verified_success": "✅ Verificato: **{ign}**",
+        "kit_created": "✅ Kit aggiunto.",
+        "kit_exists": "⚠️ Esiste già.",
+        "kit_removed": "🗑️ Rimosso.",
+        "tier_role_set": "✅ Ruolo impostato.",
+        "result_room_set": "✅ Canale impostato.",
+        "helper_role_set": "✅ Helper impostato.",
+        "queue_room_set": "✅ Coda collegata.",
+        "kit_cat_set": "✅ Categoria impostata.",
+        "lang_set": "🌐 Lingua cambiata.",
+        "cooldown_set": "⏳ Cooldown per **{tipo}** impostato a **{time}**.",
+        "queue_opened": "✅ Aperto!",
+        "queue_closed": "🔒 Chiuso.",
+        "cannot_close_active": "⚠️ Test attivi!",
+        "tester_joined": "✅ Unito.",
+        "tester_left": "✅ Uscito.",
+        "already_tester": "⚠️ Già tester.",
+        "not_tester": "⚠️ Non sei tester.",
+        "join_btn": "Entra",
+        "leave_btn": "Esci",
+        "pull_btn": "Pulla ⚔️",
+        "queue_empty": "_Vuoto._",
+        "no_testers": "_Nessuno._",
+        "active_testers": "Tester",
+        "queue_title": "📝 {kit}",
+        "queue_desc": "⏱️ Auto",
+        "result_title": "📝 Risultato – {kit}",
+        "result_desc": "Fatto!",
+        "result_sent": "✅ Salvato.",
+        "test_started": "⚔️ Inizio!",
+        "player_pulled": "✅ Pullato!",
+        "not_verified": "❌ Verificati!",
+        "already_in_queue": "⚠️ Già in coda!",
+        "left_queue": "✅ Uscito.",
+        "not_in_queue": "⚠️ Non sei in coda."
     },
     "es": {
-        "no_perms": "❌ ¡No tienes permiso para usar este comando!",
-        "verified_success": "✅ Cuenta de Minecraft verificada con éxito: **{ign}**",
-        "kit_created": "✅ Kit **{kit}** añadido con éxito a la base de datos.",
-        "kit_exists": "⚠️ El kit **{kit}** ya existe en la base de datos.",
-        "kit_removed": "🗑️ El kit **{kit}** fue eliminado.",
-        "tier_role_set": "✅ Rol **{role}** configurado para kit **{kit}** y tier **{tier}**.",
-        "result_room_set": "✅ Canal de resultados configurado en {room}.",
-        "helper_role_set": "✅ Rol de Helper configurado en {role}.",
-        "queue_room_set": "✅ Cola para el kit **{kit}** vinculada al canal {room}.",
-        "kit_cat_set": "✅ Categoría **{cat}** configurada para el kit **{kit}**.",
-        "lang_set": "🌐 Idioma del servidor cambiado a **Español**.",
-        "queue_opened": "✅ Cola para el kit **{kit}** abierta con éxito en {room}!",
-        "queue_closed": "🔒 La cola para el kit **{kit}** ha sido cerrada.",
-        "cannot_close_active": "⚠️ ¡No se puede cerrar la cola mientras haya pruebas activas!",
-        "tester_joined": "✅ Te has unido como probador activo para el kit **{kit}**.",
-        "tester_left": "✅ Eliminado de los probadores activos para el kit **{kit}**.",
-        "already_tester": "⚠️ ¡Ya estás registrado como probador en esta cola!",
-        "not_tester": "⚠️ No estás registrado como probador activo en esta cola.",
-        "join_btn": "Unirse a la cola",
-        "leave_btn": "Salir de la cola",
-        "pull_btn": "Jalar jugador ⚔️",
-        "queue_empty": "_La cola está vacía. ¡Sé el primero!_",
-        "no_testers": "_No hay probadores activos._",
-        "active_testers": "Probadores Activos",
-        "queue_title": "📝 Lista de espera {kit}",
-        "queue_desc": "⏱️ La cola se actualiza automáticamente.",
-        "result_title": "📝 Resultado de la Prueba Tier – {kit}",
-        "result_desc": "¡Prueba completada con éxito para el kit **{kit}**!",
-        "result_sent": "✅ Resultado registrado, el canal se eliminará pronto.",
-        "test_started": "⚔️ ¡La prueba comienza! Probador: {tester} | Jugador: {player}",
-        "player_pulled": "✅ ¡Jugador {player} movido al canal {room}!",
-        "not_verified": "❌ ¡Debes verificarte primero usando `/verify <minecraft ign>`!",
-        "already_in_queue": "⚠️ ¡Ya estás en esta cola!",
-        "left_queue": "✅ Saliste de la cola.",
-        "not_in_queue": "⚠️ No estás en esta cola."
+        "no_perms": "❌ ¡Sin permisos!",
+        "verified_success": "✅ Verificado: **{ign}**",
+        "kit_created": "✅ Kit creado.",
+        "kit_exists": "⚠️ Ya existe.",
+        "kit_removed": "🗑️ Eliminado.",
+        "tier_role_set": "✅ Rol configurado.",
+        "result_room_set": "✅ Canal configurado.",
+        "helper_role_set": "✅ Helper configurado.",
+        "queue_room_set": "✅ Cola vinculada.",
+        "kit_cat_set": "✅ Categoría configurada.",
+        "lang_set": "🌐 Idioma cambiado.",
+        "cooldown_set": "⏳ Cooldown para **{tipo}** configurado a **{time}**.",
+        "queue_opened": "✅ ¡Abierto!",
+        "queue_closed": "🔒 Cerrado.",
+        "cannot_close_active": "⚠️ ¡Pruebas activas!",
+        "tester_joined": "✅ Unido.",
+        "tester_left": "✅ Fuera.",
+        "already_tester": "⚠️ Ya eres tester.",
+        "not_tester": "⚠️ No eres tester.",
+        "join_btn": "Entrar",
+        "leave_btn": "Salir",
+        "pull_btn": "Jalar ⚔️",
+        "queue_empty": "_Vacío._",
+        "no_testers": "_Ninguno._",
+        "active_testers": "Testers",
+        "queue_title": "📝 {kit}",
+        "queue_desc": "⏱️ Auto",
+        "result_title": "📝 Resultado – {kit}",
+        "result_desc": "¡Completado!",
+        "result_sent": "✅ Guardado.",
+        "test_started": "⚔️ ¡Empieza!",
+        "player_pulled": "✅ ¡Jalado!",
+        "not_verified": "❌ ¡Verifícate!",
+        "already_in_queue": "⚠️ ¡Ya estás en la cola!",
+        "left_queue": "✅ Saliste.",
+        "not_in_queue": "⚠️ No estás."
     }
 }
 
@@ -366,12 +375,15 @@ def init_db():
             guild_id TEXT PRIMARY KEY,
             result_room TEXT,
             helper_role TEXT,
-            language TEXT DEFAULT 'cs'
+            language TEXT DEFAULT 'cs',
+            cooldown_lt TEXT DEFAULT '0',
+            cooldown_ht TEXT DEFAULT '0'
         )
     """)
     cursor.execute("CREATE TABLE IF NOT EXISTS queue_rooms (kit TEXT PRIMARY KEY, channel_id TEXT)")
     cursor.execute("CREATE TABLE IF NOT EXISTS kit_categories (kit TEXT PRIMARY KEY, category_id TEXT)")
     cursor.execute("CREATE TABLE IF NOT EXISTS player_tiers (discord_id TEXT, kit TEXT, tier TEXT, PRIMARY KEY (discord_id, kit))")
+    cursor.execute("CREATE TABLE IF NOT EXISTS player_cooldowns (discord_id TEXT, cooldown_until TEXT, PRIMARY KEY (discord_id))")
     conn.commit()
     conn.close()
 
@@ -430,7 +442,6 @@ async def on_ready():
     except Exception as e:
         print(f"❌ Chyba synchronizace: {e}")
 
-# --- PŘÍKAZ PRO ZMĚNU JAZYKA ---
 @bot.tree.command(name="language", description="Změní jazyk bota pro tento server.")
 @discord.app_commands.choices(jazyk=[
     discord.app_commands.Choice(name="🇨🇿 Čeština", value="cs"),
@@ -457,6 +468,27 @@ async def language(interaction: discord.Interaction, jazyk: str):
     conn.close()
 
     await interaction.response.send_message(get_msg(interaction.guild.id, "lang_set"), ephemeral=True)
+
+@bot.tree.command(name="cooldownset", description="Nastaví cooldown pro LT nebo HT tiery.")
+@discord.app_commands.choices(typ=[
+    discord.app_commands.Choice(name="LT", value="lt"),
+    discord.app_commands.Choice(name="HT", value="ht")
+])
+async def cooldownset(interaction: discord.Interaction, typ: str, cas: str):
+    if not await has_helper_perms(interaction):
+        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)
+
+    conn = sqlite3.connect("tierbot.db")
+    cursor = conn.cursor()
+    column = "cooldown_lt" if typ == "lt" else "cooldown_ht"
+    cursor.execute(f"""
+        INSERT INTO server_settings (guild_id, {column}) VALUES (?, ?)
+        ON CONFLICT(guild_id) DO UPDATE SET {column} = ?
+    """, (str(interaction.guild.id), cas, cas))
+    conn.commit()
+    conn.close()
+
+    await interaction.response.send_message(get_msg(interaction.guild.id, "cooldown_set", tipo=typ.upper(), time=cas), ephemeral=True)
 
 @bot.tree.command(name="verify", description="Propojí tvůj Discord účet s Minecraft IGN.")
 async def verify(interaction: discord.Interaction, minecraft_ign: str):
@@ -583,7 +615,19 @@ class QueueView(discord.ui.View):
         cursor = conn.cursor()
         cursor.execute("SELECT minecraft_ign FROM verified WHERE discord_id = ?", (str(interaction.user.id),))
         row = cursor.fetchone()
+
+        # Kontrola cooldownu před vstupem do fronty
+        cursor.execute("SELECT cooldown_until FROM player_cooldowns WHERE discord_id = ?", (str(interaction.user.id),))
+        cd_row = cursor.fetchone()
         conn.close()
+
+        if cd_row and cd_row[0]:
+            try:
+                cd_time = datetime.datetime.fromisoformat(cd_row[0])
+                if datetime.datetime.now() < cd_time:
+                    return await interaction.response.send_message(f"⏳ Máš cooldown až do **{cd_time.strftime('%d.%m.%Y %H:%M')}**!", ephemeral=True)
+            except Exception:
+                pass
 
         if not row:
             return await interaction.response.send_message(get_msg(interaction.guild.id, "not_verified"), ephemeral=True)
@@ -777,8 +821,27 @@ async def result(interaction: discord.Interaction, discord_hrac: discord.Member,
     cursor.execute("SELECT role_id FROM tier_roles WHERE kit = ? AND tier = ?", (kit.lower(), tier))
     role_row = cursor.fetchone()
 
-    cursor.execute("SELECT result_room FROM server_settings WHERE guild_id = ?", (str(interaction.guild.id),))
+    cursor.execute("SELECT result_room, cooldown_lt, cooldown_ht FROM server_settings WHERE guild_id = ?", (str(interaction.guild.id),))
     settings_row = cursor.fetchone()
+
+    # Výpočet a uložení cooldownu podle toho, jestli tier začíná na LT nebo HT
+    is_lt = tier.startswith("LT") or tier.startswith("RLT")
+    cd_setting = (settings_row[1] if is_lt else settings_row[2]) if settings_row else "0"
+
+    # Parsování hodnoty cooldownu (např. "5d" -> 5 dní, "12h" -> 12 hodin)
+    delta_days = 0
+    delta_hours = 0
+    if cd_setting.endswith("d"):
+        try: delta_days = int(cd_setting[:-1])
+        except: pass
+    elif cd_setting.endswith("h"):
+        try: delta_hours = int(cd_setting[:-1])
+        except: pass
+
+    if delta_days > 0 or delta_hours > 0:
+        expiry = datetime.datetime.now() + datetime.timedelta(days=delta_days, hours=delta_hours)
+        cursor.execute("INSERT OR REPLACE INTO player_cooldowns (discord_id, cooldown_until) VALUES (?, ?)", (str(discord_hrac.id), expiry.isoformat()))
+
     conn.commit()
     conn.close()
 
