@@ -431,16 +431,57 @@ async def openqueue(interaction: discord.Interaction, kit: str):
     if not target_channel:
         return await interaction.response.send_message("❌ Nastavený kanál pro frontu nebyl na serveru nalezen.", ephemeral=True)
 
-    if kit.lower() not in QUEUES:
-        QUEUES[kit.lower()] = {"players": [], "testers": [interaction.user.id]}
-    else:
-        if interaction.user.id not in QUEUES[kit.lower()]["testers"]:
-            QUEUES[kit.lower()]["testers"].append(interaction.user.id)
+    # Při novém otevření vymažeme hráče, aby byla fronta prázdná
+    QUEUES[kit.lower()] = {"players": [], "testers": [interaction.user.id]}
 
     embed = get_queue_embed(kit.lower())
     
     await target_channel.send(content="@everyone", embed=embed, view=QueueView(kit.lower()))
     await interaction.response.send_message(f"✅ Fronta pro kit **{kit}** byla úspěšně otevřena v kanálu {target_channel.mention}!", ephemeral=True)
+
+@bot.tree.command(name="closequeue", description="Zavře frontu pro daný kit.")
+@discord.app_commands.autocomplete(kit=kit_autocomplete)
+async def closequeue(interaction: discord.Interaction, kit: str):
+    if not await has_helper_perms(interaction):
+        return await interaction.response.send_message("❌ Na tento příkaz nemáš oprávnění!", ephemeral=True)
+
+    kit_key = kit.lower()
+    if kit_key in QUEUES and QUEUES[kit_key]["testers"]:
+        return await interaction.response.send_message("⚠️ Nemůžeš zavřít frontu, protože v ní stále probíhají testy (někteří testeři jsou aktivní)! Použij nejdříve `/leavequeueastester`.", ephemeral=True)
+
+    if kit_key in QUEUES:
+        QUEUES.pop(kit_key)
+
+    await interaction.response.send_message(f"🔒 Fronta pro kit **{kit}** byla uzavřena.", ephemeral=True)
+
+@bot.tree.command(name="joinqueueastester", description="Připojí tě jako testera do probíhající fronty.")
+@discord.app_commands.autocomplete(kit=kit_autocomplete)
+async def joinqueueastester(interaction: discord.Interaction, kit: str):
+    if not await has_helper_perms(interaction):
+        return await interaction.response.send_message("❌ Na tento příkaz nemáš oprávnění!", ephemeral=True)
+
+    kit_key = kit.lower()
+    if kit_key not in QUEUES:
+        QUEUES[kit_key] = {"players": [], "testers": []}
+
+    if interaction.user.id in QUEUES[kit_key]["testers"]:
+        return await interaction.response.send_message("⚠️ Už jsi zapsán jako tester v této frontě!", ephemeral=True)
+
+    QUEUES[kit_key]["testers"].append(interaction.user.id)
+    await interaction.response.send_message(f"✅ Úspěšně ses přidal jako aktivní tester pro kit **{kit}**.", ephemeral=True)
+
+@bot.tree.command(name="leavequeueastester", description="Odebere tě ze seznamu aktivních testerů dané fronty.")
+@discord.app_commands.autocomplete(kit=kit_autocomplete)
+async def leavequeueastester(interaction: discord.Interaction, kit: str):
+    if not await has_helper_perms(interaction):
+        return await interaction.response.send_message("❌ Na tento příkaz nemáš oprávnění!", ephemeral=True)
+
+    kit_key = kit.lower()
+    if kit_key in QUEUES and interaction.user.id in QUEUES[kit_key]["testers"]:
+        QUEUES[kit_key]["testers"].remove(interaction.user.id)
+        await interaction.response.send_message(f"✅ Byl jsi odebrán z aktivních testerů pro kit **{kit}**.", ephemeral=True)
+    else:
+        await interaction.response.send_message("⚠️ Nejsi veden jako aktivní tester v této frontě.", ephemeral=True)
 
 @bot.tree.command(name="result", description="Odešle výsledek testu do result místnosti.")
 @discord.app_commands.autocomplete(kit=kit_autocomplete, tier=tier_autocomplete)
