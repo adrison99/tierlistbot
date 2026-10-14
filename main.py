@@ -192,7 +192,6 @@ def get_msg(guild_id: int, key: str, **kwargs) -> str:
     msg = TRANSLATIONS[lang].get(key, TRANSLATIONS["cs"].get(key, ""))
     return msg.format(**kwargs)
 
-# 2. Inicializace databáze (zajištěno, že tabulky se NIKDY nemažou)
 def init_db():
     conn = sqlite3.connect("tierbot.db")
     cursor = conn.cursor()
@@ -212,7 +211,6 @@ def init_db():
     cursor.execute("CREATE TABLE IF NOT EXISTS queue_rooms (kit TEXT PRIMARY KEY, channel_id TEXT)")
     cursor.execute("CREATE TABLE IF NOT EXISTS kit_categories (kit TEXT PRIMARY KEY, category_id TEXT)")
     cursor.execute("CREATE TABLE IF NOT EXISTS player_tiers (discord_id TEXT, kit TEXT, tier TEXT, PRIMARY KEY (discord_id, kit))")
-    # Tabulka pro cooldowny odděleně pro každého hráče a konkrétní kit + typ (lt/ht)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS player_cooldowns (
             discord_id TEXT,
@@ -353,9 +351,9 @@ async def cooldown(interaction: discord.Interaction, player: discord.Member):
     conn.close()
 
     if not rows:
-        return await interaction.response.send_message(f"✨ Uživatel {player.mention nemá žádné aktivní cooldowny.", ephemeral=True)
+        return await interaction.response.send_message(f"✨ Uživatel {player.mention} nemá žádné aktivní cooldowny.", ephemeral=True)
 
-    embed = discord.Embed(title=f"⏳ Cooldowny pro hráча {player.display_name}", color=discord.Color.orange())
+    embed = discord.Embed(title=f"⏳ Cooldowny pro hráče {player.display_name}", color=discord.Color.orange())
     for kit, typ, until_str in rows:
         try:
             dt = datetime.datetime.fromisoformat(until_str)
@@ -365,7 +363,7 @@ async def cooldown(interaction: discord.Interaction, player: discord.Member):
             pass
 
     if not embed.fields:
-        return await interaction.response.send_message(f"✨ Uživatel {player.mention} nemá žádné aktivní (vypršelé) cooldowny.", ephemeral=True)
+        return await interaction.response.send_message(f"✨ Uživatel {player.mention} nemá žádné aktivní cooldowny.", ephemeral=True)
 
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
