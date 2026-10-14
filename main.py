@@ -236,7 +236,6 @@ async def kitcategoryset(interaction: discord.Interaction, kit: str, kategorie: 
     conn.close()
     await interaction.response.send_message(f"✅ Pro kit **{kit}** byla nastavena kategorie **{kategorie.name}**.", ephemeral=True)
 
-# --- PŘÍKAZ EDITUSER ---
 @bot.tree.command(name="edituser", description="Upraví uživatelská data (discord, mc účet nebo tier).")
 @discord.app_commands.choices(co_zmenit=[
     discord.app_commands.Choice(name="discord", value="discord"),
@@ -256,7 +255,6 @@ async def edituser(interaction: discord.Interaction, clovek: discord.Member, co_
             conn.close()
             return await interaction.response.send_message("❌ Musíš specifikovat nový Discord účet v argumentu `novy_discord`!", ephemeral=True)
         
-        # Zjistíme stávající IGN podle starého uživatele
         cursor.execute("SELECT minecraft_ign FROM verified WHERE discord_id = ?", (str(clovek.id),))
         row = cursor.fetchone()
         if not row:
@@ -264,11 +262,8 @@ async def edituser(interaction: discord.Interaction, clovek: discord.Member, co_
             return await interaction.response.send_message(f"⚠️ Uživatel {clovek.mention} nemá v databázi propojený Minecraft účet.", ephemeral=True)
         
         ign = row[0]
-        # Smažeme starý záznam a vložíme nový s novým Discord ID
         cursor.execute("DELETE FROM verified WHERE discord_id = ?", (str(clovek.id),))
         cursor.execute("INSERT OR REPLACE INTO verified (discord_id, minecraft_ign) VALUES (?, ?)", (str(novy_discord.id), ign))
-        
-        # Aktualizujeme i tiery v player_tiers
         cursor.execute("UPDATE player_tiers SET discord_id = ? WHERE discord_id = ?", (str(novy_discord.id), str(clovek.id)))
         conn.commit()
         conn.close()
@@ -296,7 +291,7 @@ async def edituser(interaction: discord.Interaction, clovek: discord.Member, co_
         cursor.execute("INSERT OR REPLACE INTO player_tiers (discord_id, kit, tier) VALUES (?, ?, ?)", (str(clovek.id), kit.lower(), tier))
         conn.commit()
         conn.close()
-        await interaction.response.send_message(f>✅ Uživateli {clovek.mention} byl úspěšně nastaven tier **{tier}** pro kit **{kit}**.", ephemeral=True)
+        await interaction.response.send_message(f"✅ Uživateli {clovek.mention} byl úspěšně nastaven tier **{tier}** pro kit **{kit}**.", ephemeral=True)
 
 QUEUES = {}
 
