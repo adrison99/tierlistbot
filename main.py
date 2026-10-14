@@ -1,32 +1,382 @@
 import os
+import sqlite3
 import discord
 from discord.ext import commands
 
-# Nastavení práv (intents)
-intents = discord.Intents.default()
+# 1. Nastavení databáze SQLite
+def init_db():
+    conn = sqlite3.connect("tierbot.db")
+    cursor = conn.cursor()
+    # Tabulka pro verifikaci hráčů (Discord ID <-> Minecraft IGN)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS verified (
+            discord_id TEXT PRIMARY KEY,
+            minecraft_ign TEXT
+        )
+    """)
+    # Tabulka pro kity
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS kits (
+            name TEXT PRIMARY KEY
+        )
+    """)
+    # Tabulka pro propojení kit + tier -> role ID
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS tier_roles (
+            kit TEXT,
+            tier TEXT,
+            role_id TEXT,
+            PRIMARY KEY (kit, tier)
+        )
+    """)
+    # Nastavení speciálních místností a rolí pro server
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS server_settings (
+            guild_id TEXT PRIMARY KEY,
+            result_room TEXT,
+            helper_role TEXT
+        )
+    """)
+    # Nastavení front pro kity
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS queue_rooms (
+            kit TEXT PRIMARY KEY,
+            channel_id TEXT
+        )
+    """)
+    # Historie tierů hráčů (Pro zjištění předchozího tieru)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS player_tiers (
+            discord_id TEXT,
+            kit TEXT,
+            tier TEXT,
+            PRIMARY KEY (discord_id, kit)
+        )
+    """)
+    conn.commit()
+    conn.close()
 
-# Vytvoření instance bota
+init_db()
+
+# 2. Inicializace bota
+intents = discord.Intents.default()
+intents.message_content = True
+intents.guilds = True
+intents.members = True
+
 bot = commands.Bot(command_prefix="!", intents=intents)
+
+# Seznam povolených tierů
+VALID_TIERS = [
+    "LT5", "HT5", "LT4", "HT4", "LT3", "HT3", 
+    "RLT2", "LT2", "RHT2", "HT2", "RLT1", "LT1", "RHT1", "HT1"
+]
+
+# Pomocná funkce na kontrolu oprávnění (helper role nebo administrátor)
+async def has_helper_perms(ctx: discord.Interaction) -> bool:
+    if ctx.user.guild_permissions.administrator:
+        return True
+    
+    conn = sqlite3.connect("tierbot.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT helper_role FROM server_settings WHERE guild_id = ?", (str(ctx.guild.id),))
+    row = cursor.fetchone()
+    conn.close()
+    
+    if row and row[0]:
+        role_id = int(row[0])
+        role = ctx.guild.get_role(role_id)
+        if role and role in ctx.user.roles:
+            return True
+    return False
 
 @bot.event
 async def on_ready():
-    print(f"✅ Bot {bot.user} je online a připraven!")
+    print(f"✅ Bot {bot.user} je online!")
     try:
-        # Synchruje slash příkazy s Discordem
         synced = await bot.tree.sync()
-        print(f"🔄 Nenačteno/synchováno {len(synced)} slash příkazů.")
+        print(f"🔄 Synchrováno {len(synced)} slash příkazů.")
     except Exception as e:
-        print(f"❌ Chyba při synchronizaci příkazů: {e}")
+        print(f"❌ Chyba synchronizace: {e}")
 
-@bot.tree.command(name="ping", description="Odpoví pong!")
-async def ping(interaction: discord.Interaction):
-    await interaction.response.send_message("Pong! 🏓")
+# --- PŘÍKAZY ---
 
-# Načtení tokenu z proměnných prostředí (Environment Variables)
-TOKEN = os.getenv("DISCORD_TOKEN")
+@bot.tree.command(name="verify", description="Propojí tvůj Discord účet s Minecraft IGN.")
+async def verify(interaction: discord.Interaction, minecraft_ign: str):
+    conn = sqlite3.connect("tierbot.db")
+    cursor = conn.cursor()
+    cursor.execute("INSERT OR REPLACE INTO verified (discord_id, minecraft_ign) VALUES (?, ?)", 
+                   (str(interaction.user.id), minecraft_ign))
+    conn.commit()
+    conn.close()
+    await interaction.response.send_message(f"✅ Úspěšně verifikován Minecraft účet: **{minecraft_ign}**", ephemeral=True)
 
-if __name__ == "__main__":
-    if TOKEN:
-        bot.run(TOKEN)
+@bot.tree.command(name="createkit", description="Přidá nový kit do databáze (Pouze helperé).")
+async def createkit(interaction: discord.Interaction, jmeno_kitu: str):
+    if not await has_helper_perms(interaction):
+        return await interaction.response.send_message("❌ Na tento příkaz nemáš oprávnění!", ephemeral=True)
+    
+    conn = sqlite3.connect("tierbot.db")
+    cursor = conn.cursor()
+    try:
+        cursor.execute("INSERT INTO kits (name) VALUES (?)", (jmeno_kitu.lower(),))
+        conn.commit()
+        await interaction.response.send_message(f"✅ Kit **{jmeno_kitu}** byl úspěšně přidán.", ephemeral=True)
+    except sqlite3.IntegrityError:
+        await interaction.response.send_message(f"⚠️ Kit **{jmeno_kitu}** již existuje.", ephemeral=True)
+    finally:
+        conn.close()
+
+@bot.tree.command(name="removekit", description="Odstraní kit z databáze.")
+async def removekit(interaction: discord.Interaction, kit: str):
+    if not await has_helper_perms(interaction):
+        return await interaction.response.send_message("❌ Na tento příkaz nemáš oprávnění!", ephemeral=True)
+    
+    conn = sqlite3.connect("tierbot.db")
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM kits WHERE name = ?", (kit.lower(),))
+    conn.commit()
+    conn.close()
+    await interaction.response.send_message(f"🗑️ Kit **{kit}** byl odstraněn.", ephemeral=True)
+
+@bot.tree.command(name="tieroleset", description="Nastaví roli pro daný kit a tier.")
+async def tieroleset(interaction: discord.Interaction, kit: str, tier: str, role: discord.Role):
+    if not await has_helper_perms(interaction):
+        return await interaction.response.send_message("❌ Na tento příkaz nemáš oprávnění!", ephemeral=True)
+    
+    if tier not in VALID_TIERS:
+        return await interaction.response.send_message("❌ Neplatný tier!", ephemeral=True)
+        
+    conn = sqlite3.connect("tierbot.db")
+    cursor = conn.cursor()
+    cursor.execute("INSERT OR REPLACE INTO tier_roles (kit, tier, role_id) VALUES (?, ?, ?)",
+                   (kit.lower(), tier, str(role.id)))
+    conn.commit()
+    conn.close()
+    await interaction.response.send_message(f"✅ Pro kit **{kit}** a tier **{tier}** byla nastavená role **{role.name}**.", ephemeral=True)
+
+@bot.tree.command(name="resultroomset", description="Nastaví místnost pro posílání výsledků.")
+async def resultroomset(interaction: discord.Interaction, discord_roomka: discord.TextChannel):
+    if not await has_helper_perms(interaction):
+        return await interaction.response.send_message("❌ Na tento příkaz nemáš oprávnění!", ephemeral=True)
+        
+    conn = sqlite3.connect("tierbot.db")
+    cursor = conn.cursor()
+    cursor.execute("INSERT OR REPLACE INTO server_settings (guild_id, result_room, helper_role) VALUES (?, ?, (SELECT helper_role FROM server_settings WHERE guild_id = ?))",
+                   (str(interaction.guild.id), str(discord_roomka.id), str(interaction.guild.id)))
+    conn.commit()
+    conn.close()
+    await interaction.response.send_message(f"✅ Result místnost nastavena na {discord_roomka.mention}.", ephemeral=True)
+
+@bot.tree.command(name="helperoleset", description="Nastaví roli, která má oprávnění používat tyto příkazy.")
+async def helperoleset(interaction: discord.Interaction, role: discord.Role):
+    if not interaction.user.guild_permissions.administrator:
+        return await interaction.response.send_message("❌ Pouze administrátor může měnit helper roli!", ephemeral=True)
+        
+    conn = sqlite3.connect("tierbot.db")
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO server_settings (guild_id, result_room, helper_role) 
+        VALUES (?, (SELECT result_room FROM server_settings WHERE guild_id = ?), ?)
+        ON CONFLICT(guild_id) DO UPDATE SET helper_role = ?
+    """, (str(interaction.guild.id), str(interaction.guild.id), str(role.id), str(role.id)))
+    conn.commit()
+    conn.close()
+    await interaction.response.send_message(f"✅ Helper role nastavena na {role.mention}.", ephemeral=True)
+
+@bot.tree.command(name="queueroomset", description="Nastaví textový kanál pro frontu daného kitu.")
+async def queueroomset(interaction: discord.Interaction, discord_roomka: discord.TextChannel, kit: str):
+    if not await has_helper_perms(interaction):
+        return await interaction.response.send_message("❌ Na tento příkaz nemáš oprávnění!", ephemeral=True)
+        
+    conn = sqlite3.connect("tierbot.db")
+    cursor = conn.cursor()
+    cursor.execute("INSERT OR REPLACE INTO queue_rooms (kit, channel_id) VALUES (?, ?)", (kit.lower(), str(discord_roomka.id)))
+    conn.commit()
+    conn.close()
+    await interaction.response.send_message(f"✅ Fronta pro kit **{kit}** svázána s kanálem {discord_roomka.mention}.", ephemeral=True)
+
+# Paměť pro aktivní fronty (Kit -> Seznam ID hráčů)
+QUEUES = {}
+
+class QueueView(discord.ui.View):
+    def __init__(self, kit_name: str):
+        super().__init__(timeout=None)
+        self.kit_name = kit_name
+
+    @discord.ui.button(label="Join Queue", style=discord.ButtonStyle.primary, custom_id="join_queue")
+    async def join_queue(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # Ověření verifikace
+        conn = sqlite3.connect("tierbot.db")
+        cursor = conn.cursor()
+        cursor.execute("SELECT minecraft_ign FROM verified WHERE discord_id = ?", (str(interaction.user.id),))
+        row = cursor.fetchone()
+        conn.close()
+
+        if not row:
+            return await interaction.response.send_message("❌ Nemůžeš vstoupit do fronty, dokud se nepropojíš přes `/verify <minecraft ign>`!", ephemeral=True)
+
+        if self.kit_name not in QUEUES:
+            QUEUES[self.kit_name] = []
+
+        if interaction.user.id in QUEUES[self.kit_name]:
+            return await interaction.response.send_message("⚠️ Už jsi v této frontě!", ephemeral=True)
+
+        QUEUES[self.kit_name].append(interaction.user.id)
+        await interaction.response.send_message("✅ Úspěšně jsi vstoupil do fronty!", ephemeral=True)
+        await update_queue_message(interaction.channel, self.kit_name)
+
+    @discord.ui.button(label="Leave Queue", style=discord.ButtonStyle.danger, custom_id="leave_queue")
+    async def leave_queue(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if self.kit_name in QUEUES and interaction.user.id in QUEUES[self.kit_name]:
+            QUEUES[self.kit_name].remove(interaction.user.id)
+            await interaction.response.send_message("✅ Jsi venku z fronty.", ephemeral=True)
+            await update_queue_message(interaction.channel, self.kit_name)
+        else:
+            await interaction.response.send_message("⚠️ Nejsi v této frontě.", ephemeral=True)
+
+    @discord.ui.button(label="Pull Player ⚔️", style=discord.ButtonStyle.success, custom_id="pull_player")
+    async def pull_player(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # Kontrola jestli je tester
+        if not await has_helper_perms(interaction):
+            return await interaction.response.send_message("❌ Pouze testeré mohou vytahovat hráče z fronty!", ephemeral=True)
+
+        if self.kit_name not in QUEUES or not QUEUES[self.kit_name]:
+            return await interaction.response.send_message("⚠️ Fronta je prázdná!", ephemeral=True)
+
+        player_id = QUEUES[self.kit_name].pop(0)
+        player = interaction.guild.get_member(player_id)
+        
+        await update_queue_message(interaction.channel, self.kit_name)
+        
+        if not player:
+            return await interaction.response.send_message("⚠️ Hráč již není na serveru.", ephemeral=True)
+
+        # Dáme testerovi možnost vybrat místnost kam hráče pullnout
+        await interaction.response.send_message(f"⚔️ Vytáhl jsi hráče {player.mention}. Nastavuji přístup do soukromé místnosti...", ephemeral=True)
+        # Zde může proběhnout logika přidání oprávnění do kanálu (např. aktuálního hlasového/textového kanálu, kde tester příkaz zadal)
+        overwrites = {
+            interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
+            player: discord.PermissionOverwrite(view_channel=True, send_messages=True, connect=True, speak=True),
+            interaction.user: discord.PermissionOverwrite(view_channel=True, send_messages=True, connect=True, speak=True)
+        }
+        # Vytvoření dočasné místnosti pro test
+        category = interaction.channel.category
+        room = await interaction.guild.create_text_channel(name=f"test-{player.name}", category=category, overwrites=overwrites)
+        await room.send(f"🎮 Test začíná! Tester: {interaction.user.mention} vs Hráč: {player.mention}. Až skončíte, použijte `/result` v původní místnosti.")
+
+async def update_queue_message(channel, kit_name):
+    # Aktualizuje výpis fronty v kanálu
+    players_list = QUEUES.get(kit_name, [])
+    if players_list:
+        players_str = "\n".join([f"{i+1}. <@{pid}>" for i, pid in enumerate(players_list)])
     else:
-        print("❌ Chyba: Není nastaven DISCORD_TOKEN v proměnných prostředí!")
+        players_str = "_Fronta je prázdná. Buď první!_"
+
+    embed = discord.Embed(
+        title=f"📝 {kit_name.capitalize()} Waitlist",
+        description=f"⏱️ Fronta se aktualizuje automaticky.\nPoužij tlačítka níže pro přidání nebo odebrání.\n\n**Fronta:**\n{players_str}",
+        color=discord.Color.blue()
+    )
+    # Hledáme zprávu bota a aktualizujeme embed, případně pošleme novou
+    async for message in channel.history(limit=10):
+        if message.author == bot.user and message.embeds:
+            await message.edit(embed=embed, view=QueueView(kit_name))
+            return
+    await channel.send(embed=embed, view=QueueView(kit_name))
+
+@bot.tree.command(name="openqueue", description="Otevře queue pro daný kit.")
+async def openqueue(interaction: discord.Interaction, kit: str):
+    if not await has_helper_perms(interaction):
+        return await interaction.owner.send("❌ Nemáš oprávnění." ) if False else await interaction.response.send_message("❌ Na tento příkaz nemáš oprávnění!", ephemeral=True)
+    
+    if kit.lower() not in QUEUES:
+        QUEUES[kit.lower()] = []
+
+    embed = discord.Embed(
+        title=f"📝 {kit.capitalize()} Waitlist",
+        description="⏱️ Fronta se aktualizuje automaticky.\nPoužij tlačítka níže pro přidání nebo odebrání.\n\n**Fronta:**\n_Fronta je prázdná. Buď první!_",
+        color=discord.Color.blue()
+    )
+    await interaction.response.send_message(embed=embed, view=QueueView(kit.lower()))
+
+@bot.tree.command(name="result", description="Odešle výsledek testu do result místnosti.")
+async def result(interaction: discord.Interaction, discord_hrac: discord.Member, kit: str, tier: str):
+    if not await has_helper_perms(interaction):
+        return await interaction.response.send_message("❌ Na tento příkaz nemáš oprávnění!", ephemeral=True)
+
+    if tier not in VALID_TIERS:
+        return await interaction.response.send_message("❌ Neplatný tier!", ephemeral=True)
+
+    # Zjištění minecraft IGN hráče
+    conn = sqlite3.connect("tierbot.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT minecraft_ign FROM verified WHERE discord_id = ?", (str(discord_hrac.id),))
+    row = cursor.fetchone()
+    mc_ign = row[0] if row else "Neznámý"
+
+    # Zjištění předchozího tieru
+    cursor.execute("SELECT tier FROM player_tiers WHERE discord_id = ? AND kit = ?", (str(discord_hrac.id), kit.lower()))
+    prev_row = cursor.fetchone()
+    prev_tier = prev_row[0] if prev_row else "N/A"
+
+    # Uložení nového tieru
+    cursor.execute("INSERT OR REPLACE INTO player_tiers (discord_id, kit, tier) VALUES (?, ?, ?)",
+                   (str(discord_hrac.id), kit.lower(), tier))
+    
+    # Zjištění nastavené role pro nový tier
+    cursor.execute("SELECT role_id FROM tier_roles WHERE kit = ? AND tier = ?", (kit.lower(), tier))
+    role_row = cursor.fetchone()
+
+    # Zjištění result místnosti
+    cursor.execute("SELECT result_room FROM server_settings WHERE guild_id = ?", (str(interaction.guild.id),))
+    settings_row = cursor.fetchone()
+    conn.commit()
+    conn.close()
+
+    # Přidání/odebrání role hráči podle nastavení
+    if role_row and role_row[0]:
+        role = interaction.guild.get_role(int(role_row[0]))
+        if role:
+            try:
+                await discord_hrac.add_roles(role)
+            except Exception:
+                pass
+
+    # Sestavení výsledkového embedu podle screenshotu[cite: 13]
+    import datetime
+    dnes = datetime.datetime.now().strftime("%d.%m.%Y")
+
+    embed = discord.Embed(
+        title=f"📝 Výsledek tier testu – {kit}",
+        description=f"Tier test byl úspěšně dokončen pro frontu **{kit}**!",
+        color=discord.Color.green()
+    )
+    embed.add_field(name="👤 Hráč (Discord)", value=discord_hrac.mention, inline=True)
+    embed.add_field(name="🎮 Minecraft IGN", value=mc_ign, inline=True)
+    embed.add_field(name="⚔️ Tester", value=interaction.user.mention, inline=True)
+    embed.add_field(name="📊 Skóre / Výsledek", value="3–0 (Tester vyhrál)", inline=False)
+    embed.add_field(name="📉 Předchozí tier", value=prev_tier, inline=True)
+    embed.add_field(name="📈 Nový tier", value=tier, inline=True)
+    embed.set_footer(text=dnes)
+
+    # Odeslání do result místnosti
+    if settings_row and settings_row[0]:
+        room_id = int(settings_row[0])
+        room = interaction.guild.get_channel(room_id)
+        if room:
+            await room.send(content=f"📢 **Nový výsledek pro {kit}!** | Hráč: {discord_hrac.mention} | Tester: {interaction.user.mention}", embed=embed)
+    
+    # Úklid testovací místnosti (pokud příkaz proběhl v kanálu začínajícím na test-)
+    if interaction.channel.name.startswith("test-"):
+        await interaction.response.send_message("✅ Výsledek byl odeslán a testovací místnost bude smazána.", ephemeral=True)
+        import asyncio
+        await asyncio.sleep(3)
+        await interaction.channel.delete()
+    else:
+        await interaction.response.send_message("✅ Výsledek byl úspěšně zaznamenán a odeslán!", ephemeral=True)
+
+# Spuštění bota
+TOKEN = os.getenv("DISCORD_TOKEN")
+if __name__ == "__main__":
+    bot.run(TOKEN)
