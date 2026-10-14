@@ -1,5 +1,7 @@
 import os
 import sqlite3
+import datetime
+import asyncio
 import discord
 from discord.ext import commands
 
@@ -64,7 +66,6 @@ VALID_TIERS = [
     "RLT2", "LT2", "RHT2", "HT2", "RLT1", "LT1", "RHT1", "HT1"
 ]
 
-# Sem si můžeš případně doplnit své Discord ID pro jistotu plných práv
 OWNER_IDS = [] 
 
 async def has_helper_perms(ctx: discord.Interaction) -> bool:
@@ -88,7 +89,6 @@ async def has_helper_perms(ctx: discord.Interaction) -> bool:
             
     return False
 
-# --- AUTOMATICKÉ DOPLŇOVÁNÍ (Autocomplete) pro kity z databáze ---
 async def kit_autocomplete(interaction: discord.Interaction, current: str):
     conn = sqlite3.connect("tierbot.db")
     cursor = conn.cursor()
@@ -102,7 +102,6 @@ async def kit_autocomplete(interaction: discord.Interaction, current: str):
         for kit in kits if current.lower() in kit.lower()
     ]
 
-# Autocomplete pro tiery
 async def tier_autocomplete(interaction: discord.Interaction, current: str):
     return [
         discord.app_commands.Choice(name=tier, value=tier)
@@ -181,8 +180,11 @@ async def resultroomset(interaction: discord.Interaction, discord_roomka: discor
         
     conn = sqlite3.connect("tierbot.db")
     cursor = conn.cursor()
-    cursor.execute("INSERT OR REPLACE INTO server_settings (guild_id, result_room, helper_role) VALUES (?, ?, (SELECT helper_role FROM server_settings WHERE guild_id = ?))",
-                   (str(interaction.guild.id), str(discord_roomka.id), str(interaction.guild.id)))
+    cursor.execute("""
+        INSERT INTO server_settings (guild_id, result_room, helper_role) 
+        VALUES (?, ?, (SELECT helper_role FROM server_settings WHERE guild_id = ?))
+        ON CONFLICT(guild_id) DO UPDATE SET result_room = ?
+    """, (str(interaction.guild.id), str(discord_roomka.id), str(interaction.guild.id), str(discord_roomka.id)))
     conn.commit()
     conn.close()
     await interaction.response.send_message(f"✅ Result místnost nastavena na {discord_roomka.mention}.", ephemeral=True)
@@ -216,6 +218,7 @@ async def queueroomset(interaction: discord.Interaction, discord_roomka: discord
     conn.close()
     await interaction.response.send_message(f"✅ Fronta pro kit **{kit}** svázána s kanálem {discord_roomka.mention}.", ephemeral=True)
 
+# Paměť front: Kit -> {"players": [id], "testers": [id]}
 QUEUES = {}
 
 class QueueView(discord.ui.View):
@@ -235,19 +238,19 @@ class QueueView(discord.ui.View):
             return await interaction.response.send_message("❌ Nemůžeš vstoupit do fronty, dokud se nepropojíš přes `/verify <minecraft ign>`!", ephemeral=True)
 
         if self.kit_name not in QUEUES:
-            QUEUES[self.kit_name] = []
+            QUEUES[self.kit_name] = {"players": [], "testers": []}
 
-        if interaction.user.id in QUEUES[self.kit_name]:
+        if interaction.user.id in QUEUES[self.kit_name]["players"]:
             return await interaction.response.send_message("⚠️ Už jsi v této frontě!", ephemeral=True)
 
-        QUEUES[self.kit_name].append(interaction.user.id)
+        QUEUES[self.kit_name]["players"].append(interaction.user.id)
         await interaction.response.send_message("✅ Úspěšně jsi vstoupil do fronty!", ephemeral=True)
         await update_queue_message(interaction.channel, self.kit_name)
 
     @discord.ui.button(label="Leave Queue", style=discord.ButtonStyle.danger, custom_id="leave_queue")
     async def leave_queue(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if self.kit_name in QUEUES and interaction.user.id in QUEUES[self.kit_name]:
-            QUEUES[self.kit_name].remove(interaction.user.id)
+        if self.kit_name in QUEUES and interaction.user.id in QUEUES[self.kit_name]["players"]:
+            QUEUES[self.kit_name]["players"].remove(interaction.user.id)
             await interaction.response.send_message("✅ Jsi venku z fronty.", ephemeral=True)
             await update_queue_message(interaction.channel, self.kit_name)
         else:
@@ -258,10 +261,14 @@ class QueueView(discord.ui.View):
         if not await has_helper_perms(interaction):
             return await interaction.response.send_message("❌ Pouze testeré mohou vytahovat hráče z fronty!", ephemeral=True)
 
-        if self.kit_name not in QUEUES or not QUEUES[self.kit_name]:
+        if self.kit_name not in QUEUES or not QUEUES[self.kit_name]["players"]:
             return await interaction.response.send_message("⚠️ Fronta je prázdná!", ephemeral=True)
 
-        player_id = QUEUES[self.kit_name].pop(0)
+        # Přidáme testera do aktivních testerů, pokud tam ještě není
+        if interaction.user.id not in QUEUES[self.kit_name]["testers"]:
+            QUEUES[self.kit_name]["testers"].append(interaction.user.id)
+
+        player_id = QUEUES[self.kit_name]["players"].pop(0)
         player = interaction.guild.get_member(player_id)
         
         await update_queue_message(interaction.channel, self.kit_name)
@@ -279,39 +286,68 @@ class QueueView(discord.ui.View):
         room = await interaction.guild.create_text_channel(name=f"test-{player.name}", category=category, overwrites=overwrites)
         await room.send(f"🎮 Test začíná! Tester: {interaction.user.mention} vs Hráč: {player.mention}. Až skončíte, použijte `/result` v původní místnosti.")
 
-async def update_queue_message(channel, kit_name):
-    players_list = QUEUES.get(kit_name, [])
+def get_queue_embed(kit_name: str):
+    data = QUEUES.get(kit_name, {"players": [], "testers": []})
+    players_list = data["players"]
+    testers_list = data["testers"]
+
     if players_list:
         players_str = "\n".join([f"{i+1}. <@{pid}>" for i, pid in enumerate(players_list)])
     else:
         players_str = "_Fronta je prázdná. Buď první!_"
 
+    if testers_list:
+        testers_str = "\n".join([f"{i+1}. <@{tid}>" for i, tid in enumerate(testers_list)])
+    else:
+        testers_str = "_Žádní aktivní testeři._"
+
     embed = discord.Embed(
         title=f"📝 {kit_name.capitalize()} Waitlist",
-        description=f"⏱️ Fronta se aktualizuje automaticky.\nPoužij tlačítka níže pro přidání nebo odebrání.\n\n**Fronta:**\n{players_str}",
+        description=f"⏱️ Fronta se aktualizuje automaticky.\nPoužij tlačítka níže pro přidání nebo odebrání.\n\n**Fronta:**\n{players_str}\n\n**Aktivní Testeři:**\n{testers_str}",
         color=discord.Color.blue()
     )
+    return embed
+
+async def update_queue_message(channel, kit_name):
+    embed = get_queue_embed(kit_name)
     async for message in channel.history(limit=10):
         if message.author == bot.user and message.embeds:
             await message.edit(embed=embed, view=QueueView(kit_name))
             return
     await channel.send(embed=embed, view=QueueView(kit_name))
 
-@bot.tree.command(name="openqueue", description="Otevře queue pro daný kit.")
+@bot.tree.command(name="openqueue", description="Otevře queue pro daný kit v nastaveném kanálu.")
 @discord.app_commands.autocomplete(kit=kit_autocomplete)
 async def openqueue(interaction: discord.Interaction, kit: str):
     if not await has_helper_perms(interaction):
         return await interaction.response.send_message("❌ Na tento příkaz nemáš oprávnění!", ephemeral=True)
     
-    if kit.lower() not in QUEUES:
-        QUEUES[kit.lower()] = []
+    # Zjištění nastavené roomky pro tento kit
+    conn = sqlite3.connect("tierbot.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT channel_id FROM queue_rooms WHERE kit = ?", (kit.lower(),))
+    row = cursor.fetchone()
+    conn.close()
 
-    embed = discord.Embed(
-        title=f"📝 {kit.capitalize()} Waitlist",
-        description="⏱️ Fronta se aktualizuje automaticky.\nPoužij tlačítka níže pro přidání nebo odebrání.\n\n**Fronta:**\n_Fronta je prázdná. Buď první!_",
-        color=discord.Color.blue()
-    )
-    await interaction.response.send_message(embed=embed, view=QueueView(kit.lower()))
+    if not row or not row[0]:
+        return await interaction.response.send_message(f"❌ Pro kit **{kit}** není nastavena queue místnost! Použij nejdříve `/queueroomset`.", ephemeral=True)
+
+    channel_id = int(row[0])
+    target_channel = interaction.guild.get_channel(channel_id)
+    if not target_channel:
+        return await interaction.response.send_message("❌ Nastavený kanál pro frontu nebyl na serveru nalezen.", ephemeral=True)
+
+    if kit.lower() not in QUEUES:
+        QUEUES[kit.lower()] = {"players": [], "testers": [interaction.user.id]}
+    else:
+        if interaction.user.id not in QUEUES[kit.lower"]["testers"]:
+            QUEUES[kit.lower()]["testers"].append(interaction.user.id)
+
+    embed = get_queue_embed(kit.lower())
+    
+    # Odeslání zprávy s @everyone do správného kanálu
+    await target_channel.send(content="@everyone", embed=embed, view=QueueView(kit.lower()))
+    await interaction.response.send_message(f"✅ Fronta pro kit **{kit}** byla úspěšně otevřena v kanálu {target_channel.mention}!", ephemeral=True)
 
 @bot.tree.command(name="result", description="Odešle výsledek testu do result místnosti.")
 @discord.app_commands.autocomplete(kit=kit_autocomplete, tier=tier_autocomplete)
@@ -351,7 +387,6 @@ async def result(interaction: discord.Interaction, discord_hrac: discord.Member,
             except Exception:
                 pass
 
-    import datetime
     dnes = datetime.datetime.now().strftime("%d.%m.%Y")
 
     embed = discord.Embed(
@@ -367,15 +402,19 @@ async def result(interaction: discord.Interaction, discord_hrac: discord.Member,
     embed.add_field(name="📈 Nový tier", value=tier, inline=True)
     embed.set_footer(text=dnes)
 
+    # Odeslání do nastavené result místnosti z /resultroomset
     if settings_row and settings_row[0]:
         room_id = int(settings_row[0])
         room = interaction.guild.get_channel(room_id)
         if room:
             await room.send(content=f"📢 **Nový výsledek pro {kit}!** | Hráč: {discord_hrac.mention} | Tester: {interaction.user.mention}", embed=embed)
+        else:
+            await interaction.channel.send(content=f"📢 **Nový výsledek pro {kit}!** | Hráč: {discord_hrac.mention} | Tester: {interaction.user.mention}", embed=embed)
+    else:
+        await interaction.channel.send(content=f"📢 **Nový výsledek pro {kit}!** | Hráč: {discord_hrac.mention} | Tester: {interaction.user.mention}", embed=embed)
     
     if interaction.channel.name.startswith("test-"):
         await interaction.response.send_message("✅ Výsledek byl odeslán a testovací místnost bude smazána.", ephemeral=True)
-        import asyncio
         await asyncio.sleep(3)
         await interaction.channel.delete()
     else:
