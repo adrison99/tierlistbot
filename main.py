@@ -72,9 +72,9 @@ VALID_TIERS = [
     "RLT2", "LT2", "RHT2", "HT2", "RLT1", "LT1", "RHT1", "HT1"
 ]
 
-# Pomocná funkce na kontrolu oprávnění (helper role nebo administrátor)
+# Pomocná funkce na kontrolu oprávnění (Admin má vždy přístup automaticky)
 async def has_helper_perms(ctx: discord.Interaction) -> bool:
-    if ctx.user.guild_permissions.administrator:
+    if ctx.user.guild_permissions.administrator or ctx.guild.owner_id == ctx.user.id:
         return True
     
     conn = sqlite3.connect("tierbot.db")
@@ -84,10 +84,14 @@ async def has_helper_perms(ctx: discord.Interaction) -> bool:
     conn.close()
     
     if row and row[0]:
-        role_id = int(row[0])
-        role = ctx.guild.get_role(role_id)
-        if role and role in ctx.user.roles:
-            return True
+        try:
+            role_id = int(row[0])
+            role = ctx.guild.get_role(role_id)
+            if role and role in ctx.user.roles:
+                return True
+        except Exception:
+            pass
+            
     return False
 
 @bot.event
@@ -170,7 +174,7 @@ async def resultroomset(interaction: discord.Interaction, discord_roomka: discor
 
 @bot.tree.command(name="helperoleset", description="Nastaví roli, která má oprávnění používat tyto příkazy.")
 async def helperoleset(interaction: discord.Interaction, role: discord.Role):
-    if not interaction.user.guild_permissions.administrator:
+    if not interaction.user.guild_permissions.administrator and interaction.guild.owner_id != interaction.user.id:
         return await interaction.response.send_message("❌ Pouze administrátor může měnit helper roli!", ephemeral=True)
         
     conn = sqlite3.connect("tierbot.db")
@@ -206,7 +210,6 @@ class QueueView(discord.ui.View):
 
     @discord.ui.button(label="Join Queue", style=discord.ButtonStyle.primary, custom_id="join_queue")
     async def join_queue(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # Ověření verifikace
         conn = sqlite3.connect("tierbot.db")
         cursor = conn.cursor()
         cursor.execute("SELECT minecraft_ign FROM verified WHERE discord_id = ?", (str(interaction.user.id),))
@@ -237,7 +240,6 @@ class QueueView(discord.ui.View):
 
     @discord.ui.button(label="Pull Player ⚔️", style=discord.ButtonStyle.success, custom_id="pull_player")
     async def pull_player(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # Kontrola jestli je tester
         if not await has_helper_perms(interaction):
             return await interaction.response.send_message("❌ Pouze testeré mohou vytahovat hráče z fronty!", ephemeral=True)
 
@@ -252,21 +254,17 @@ class QueueView(discord.ui.View):
         if not player:
             return await interaction.response.send_message("⚠️ Hráč již není na serveru.", ephemeral=True)
 
-        # Dáme testerovi možnost vybrat místnost kam hráče pullnout
         await interaction.response.send_message(f"⚔️ Vytáhl jsi hráče {player.mention}. Nastavuji přístup do soukromé místnosti...", ephemeral=True)
-        # Zde může proběhnout logika přidání oprávnění do kanálu (např. aktuálního hlasového/textového kanálu, kde tester příkaz zadal)
         overwrites = {
             interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
             player: discord.PermissionOverwrite(view_channel=True, send_messages=True, connect=True, speak=True),
             interaction.user: discord.PermissionOverwrite(view_channel=True, send_messages=True, connect=True, speak=True)
         }
-        # Vytvoření dočasné místnosti pro test
         category = interaction.channel.category
         room = await interaction.guild.create_text_channel(name=f"test-{player.name}", category=category, overwrites=overwrites)
         await room.send(f"🎮 Test začíná! Tester: {interaction.user.mention} vs Hráč: {player.mention}. Až skončíte, použijte `/result` v původní místnosti.")
 
 async def update_queue_message(channel, kit_name):
-    # Aktualizuje výpis fronty v kanálu
     players_list = QUEUES.get(kit_name, [])
     if players_list:
         players_str = "\n".join([f"{i+1}. <@{pid}>" for i, pid in enumerate(players_list)])
@@ -278,7 +276,6 @@ async def update_queue_message(channel, kit_name):
         description=f"⏱️ Fronta se aktualizuje automaticky.\nPoužij tlačítka níže pro přidání nebo odebrání.\n\n**Fronta:**\n{players_str}",
         color=discord.Color.blue()
     )
-    # Hledáme zprávu bota a aktualizujeme embed, případně pošleme novou
     async for message in channel.history(limit=10):
         if message.author == bot.user and message.embeds:
             await message.edit(embed=embed, view=QueueView(kit_name))
@@ -288,7 +285,7 @@ async def update_queue_message(channel, kit_name):
 @bot.tree.command(name="openqueue", description="Otevře queue pro daný kit.")
 async def openqueue(interaction: discord.Interaction, kit: str):
     if not await has_helper_perms(interaction):
-        return await interaction.owner.send("❌ Nemáš oprávnění." ) if False else await interaction.response.send_message("❌ Na tento příkaz nemáš oprávnění!", ephemeral=True)
+        return await interaction.response.send_message("❌ Na tento příkaz nemáš oprávnění!", ephemeral=True)
     
     if kit.lower() not in QUEUES:
         QUEUES[kit.lower()] = []
@@ -308,33 +305,27 @@ async def result(interaction: discord.Interaction, discord_hrac: discord.Member,
     if tier not in VALID_TIERS:
         return await interaction.response.send_message("❌ Neplatný tier!", ephemeral=True)
 
-    # Zjištění minecraft IGN hráče
     conn = sqlite3.connect("tierbot.db")
     cursor = conn.cursor()
     cursor.execute("SELECT minecraft_ign FROM verified WHERE discord_id = ?", (str(discord_hrac.id),))
     row = cursor.fetchone()
     mc_ign = row[0] if row else "Neznámý"
 
-    # Zjištění předchozího tieru
     cursor.execute("SELECT tier FROM player_tiers WHERE discord_id = ? AND kit = ?", (str(discord_hrac.id), kit.lower()))
     prev_row = cursor.fetchone()
     prev_tier = prev_row[0] if prev_row else "N/A"
 
-    # Uložení nového tieru
     cursor.execute("INSERT OR REPLACE INTO player_tiers (discord_id, kit, tier) VALUES (?, ?, ?)",
                    (str(discord_hrac.id), kit.lower(), tier))
     
-    # Zjištění nastavené role pro nový tier
     cursor.execute("SELECT role_id FROM tier_roles WHERE kit = ? AND tier = ?", (kit.lower(), tier))
     role_row = cursor.fetchone()
 
-    # Zjištění result místnosti
     cursor.execute("SELECT result_room FROM server_settings WHERE guild_id = ?", (str(interaction.guild.id),))
     settings_row = cursor.fetchone()
     conn.commit()
     conn.close()
 
-    # Přidání/odebrání role hráči podle nastavení
     if role_row and role_row[0]:
         role = interaction.guild.get_role(int(role_row[0]))
         if role:
@@ -343,7 +334,6 @@ async def result(interaction: discord.Interaction, discord_hrac: discord.Member,
             except Exception:
                 pass
 
-    # Sestavení výsledkového embedu podle screenshotu[cite: 13]
     import datetime
     dnes = datetime.datetime.now().strftime("%d.%m.%Y")
 
@@ -360,14 +350,12 @@ async def result(interaction: discord.Interaction, discord_hrac: discord.Member,
     embed.add_field(name="📈 Nový tier", value=tier, inline=True)
     embed.set_footer(text=dnes)
 
-    # Odeslání do result místnosti
     if settings_row and settings_row[0]:
         room_id = int(settings_row[0])
         room = interaction.guild.get_channel(room_id)
         if room:
             await room.send(content=f"📢 **Nový výsledek pro {kit}!** | Hráč: {discord_hrac.mention} | Tester: {interaction.user.mention}", embed=embed)
     
-    # Úklid testovací místnosti (pokud příkaz proběhl v kanálu začínajícím na test-)
     if interaction.channel.name.startswith("test-"):
         await interaction.response.send_message("✅ Výsledek byl odeslán a testovací místnost bude smazána.", ephemeral=True)
         import asyncio
