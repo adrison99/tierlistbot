@@ -236,6 +236,68 @@ async def kitcategoryset(interaction: discord.Interaction, kit: str, kategorie: 
     conn.close()
     await interaction.response.send_message(f"✅ Pro kit **{kit}** byla nastavena kategorie **{kategorie.name}**.", ephemeral=True)
 
+# --- PŘÍKAZ EDITUSER ---
+@bot.tree.command(name="edituser", description="Upraví uživatelská data (discord, mc účet nebo tier).")
+@discord.app_commands.choices(co_zmenit=[
+    discord.app_commands.Choice(name="discord", value="discord"),
+    discord.app_commands.Choice(name="mc účet", value="mc"),
+    discord.app_commands.Choice(name="tier", value="tier")
+])
+@discord.app_commands.autocomplete(kit=kit_autocomplete, tier=tier_autocomplete)
+async def edituser(interaction: discord.Interaction, clovek: discord.Member, co_zmenit: str, novy_discord: discord.Member = None, novy_mc: str = None, kit: str = None, tier: str = None):
+    if not await has_helper_perms(interaction):
+        return await interaction.response.send_message("❌ Na tento příkaz nemáš oprávnění!", ephemeral=True)
+
+    conn = sqlite3.connect("tierbot.db")
+    cursor = conn.cursor()
+
+    if co_zmenit == "discord":
+        if not novy_discord:
+            conn.close()
+            return await interaction.response.send_message("❌ Musíš specifikovat nový Discord účet v argumentu `novy_discord`!", ephemeral=True)
+        
+        # Zjistíme stávající IGN podle starého uživatele
+        cursor.execute("SELECT minecraft_ign FROM verified WHERE discord_id = ?", (str(clovek.id),))
+        row = cursor.fetchone()
+        if not row:
+            conn.close()
+            return await interaction.response.send_message(f"⚠️ Uživatel {clovek.mention} nemá v databázi propojený Minecraft účet.", ephemeral=True)
+        
+        ign = row[0]
+        # Smažeme starý záznam a vložíme nový s novým Discord ID
+        cursor.execute("DELETE FROM verified WHERE discord_id = ?", (str(clovek.id),))
+        cursor.execute("INSERT OR REPLACE INTO verified (discord_id, minecraft_ign) VALUES (?, ?)", (str(novy_discord.id), ign))
+        
+        # Aktualizujeme i tiery v player_tiers
+        cursor.execute("UPDATE player_tiers SET discord_id = ? WHERE discord_id = ?", (str(novy_discord.id), str(clovek.id)))
+        conn.commit()
+        conn.close()
+        await interaction.response.send_message(f"✅ Úspěšně změněn Discord účet z {clovek.mention} na {novy_discord.mention} pro Minecraft IGN: **{ign}**", ephemeral=True)
+
+    elif co_zmenit == "mc":
+        if not novy_mc:
+            conn.close()
+            return await interaction.response.send_message("❌ Musíš zadat nové Minecraft IGN v argumentu `novy_mc`!", ephemeral=True)
+        
+        cursor.execute("INSERT OR REPLACE INTO verified (discord_id, minecraft_ign) VALUES (?, ?)", (str(clovek.id), novy_mc))
+        conn.commit()
+        conn.close()
+        await interaction.response.send_message(f"✅ Úspěšně změněn Minecraft IGN na **{novy_mc}** pro uživatele {clovek.mention}.", ephemeral=True)
+
+    elif co_zmenit == "tier":
+        if not kit or not tier:
+            conn.close()
+            return await interaction.response.send_message("❌ Pro změnu tieru musíš vybrat kit (`kit`) a nový tier (`tier`)!", ephemeral=True)
+        
+        if tier not in VALID_TIERS:
+            conn.close()
+            return await interaction.response.send_message("❌ Neplatný tier!", ephemeral=True)
+
+        cursor.execute("INSERT OR REPLACE INTO player_tiers (discord_id, kit, tier) VALUES (?, ?, ?)", (str(clovek.id), kit.lower(), tier))
+        conn.commit()
+        conn.close()
+        await interaction.response.send_message(f>✅ Uživateli {clovek.mention} byl úspěšně nastaven tier **{tier}** pro kit **{kit}**.", ephemeral=True)
+
 QUEUES = {}
 
 class QueueView(discord.ui.View):
@@ -281,7 +343,6 @@ class QueueView(discord.ui.View):
         if self.kit_name not in QUEUES or not QUEUES[self.kit_name]["players"]:
             return await interaction.response.send_message("⚠️ Fronta je prázdná!", ephemeral=True)
 
-        # Načtení kategorie pro daný kit
         conn = sqlite3.connect("tierbot.db")
         cursor = conn.cursor()
         cursor.execute("SELECT category_id FROM kit_categories WHERE kit = ?", (self.kit_name.lower(),))
@@ -303,14 +364,12 @@ class QueueView(discord.ui.View):
         if cat_row and cat_row[0]:
             target_category = interaction.guild.get_channel(int(cat_row[0]))
 
-        # Vytvoření přístupových práv
         overwrites = {
             interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
             player: discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True),
             interaction.user: discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True)
         }
 
-        # Vytvoření kanálu <ign>-test
         channel_name = f"{mc_ign.lower()}-test"
         test_channel = await interaction.guild.create_text_channel(
             name=channel_name,
@@ -318,7 +377,6 @@ class QueueView(discord.ui.View):
             overwrites=overwrites
         )
 
-        # Odebrání z fronty a přidání testera
         QUEUES[self.kit_name]["players"].pop(0)
         if interaction.user.id not in QUEUES[self.kit_name]["testers"]:
             QUEUES[self.kit_name]["testers"].append(interaction.user.id)
@@ -442,12 +500,10 @@ async def result(interaction: discord.Interaction, discord_hrac: discord.Member,
     embed.add_field(name="📈 Nový tier", value=tier, inline=True)
     embed.set_footer(text=dnes)
 
-    # Přidání skinu hráče přes Visage API (na základě IGN z NameMC/Minecraft)
     if mc_ign != "Neznámý":
         skin_url = f"https://visage.surgeplay.com/bust/512/{mc_ign}"
         embed.set_thumbnail(url=skin_url)
 
-    # Odeslání do result místnosti
     if settings_row and settings_row[0]:
         room_id = int(settings_row[0])
         room = interaction.guild.get_channel(room_id)
@@ -458,7 +514,6 @@ async def result(interaction: discord.Interaction, discord_hrac: discord.Member,
     else:
         await interaction.channel.send(content=f"📢 **Nový výsledek pro {kit}!** | Hráč: {discord_hrac.mention} | Tester: {interaction.user.mention}", embed=embed)
     
-    # Odpověď a smazání testovací místnosti
     await interaction.response.send_message("✅ Výsledek byl úspěšně zaznamenán a tato místnost bude za chvíli smazána.", ephemeral=True)
     await asyncio.sleep(3)
     try:
