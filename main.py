@@ -6,7 +6,6 @@ import discord
 from discord.ext import commands
 from aiohttp import web
 
-# 1. Slovník překladů pro všechny požadované jazyky
 TRANSLATIONS = {
     "cs": {
         "no_perms": "❌ Na tento příkaz nemáš oprávnění!",
@@ -37,6 +36,8 @@ TRANSLATIONS = {
         "active_testers": "Aktivní Testeři",
         "queue_title": "📝 {kit} Waitlist",
         "queue_desc": "⏱️ Fronta se aktualizuje automaticky.\nPoužij tlačítka níže pro přidání nebo odebrání.",
+        "closed_title": "🔒 {kit} Queue",
+        "closed_desc": "Queue momentálně není otevřená. Počkej na Testera, který ji otevře.",
         "result_title": "📝 Výsledek tier testu – {kit}",
         "result_desc": "Tier test byl úspěšně dokončen pro frontu **{kit}**!",
         "result_sent": "✅ Výsledek byl úspěšně zaznamenán a tato místnost bude za chvíli smazána.",
@@ -76,6 +77,8 @@ TRANSLATIONS = {
         "active_testers": "Active Testers",
         "queue_title": "📝 {kit} Waitlist",
         "queue_desc": "⏱️ Queue updates automatically.\nUse buttons below to join or leave.",
+        "closed_title": "🔒 {kit} Queue",
+        "closed_desc": "Queue is currently closed. Wait for a Tester to open it.",
         "result_title": "📝 Tier Test Result – {kit}",
         "result_desc": "Tier test successfully completed for queue **{kit}**!",
         "result_sent": "✅ Result recorded, this channel will be deleted shortly.",
@@ -85,99 +88,6 @@ TRANSLATIONS = {
         "already_in_queue": "⚠️ You are already in this queue!",
         "left_queue": "✅ Left the queue.",
         "not_in_queue": "⚠️ You are not in this queue."
-    },
-    "en-us": {
-        "no_perms": "❌ You don't have permission to use this command!",
-        "verified_success": "✅ Successfully verified Minecraft account: **{ign}**",
-        "kit_created": "✅ Kit **{kit}** has been successfully added to the database.",
-        "kit_exists": "⚠️ Kit **{kit}** already exists in the database.",
-        "kit_removed": "🗑️ Kit **{kit}** was deleted.",
-        "tier_role_set": "✅ Role **{role}** set for kit **{kit}** and tier **{tier}**.",
-        "result_room_set": "✅ Result channel set to {room}.",
-        "helper_role_set": "✅ Helper role set to {role}.",
-        "queue_room_set": "✅ Queue for kit **{kit}** linked to channel {room}.",
-        "kit_cat_set": "✅ Category **{cat}** set for kit **{kit}**.",
-        "lang_set": "🌐 Server language set to **English (American)**.",
-        "cooldown_set": "⏳ Cooldown for **{tipo}** successfully set to **{time}**.",
-        "cooldown_removed": "✅ Cooldown type **{tipo}** for kit **{kit}** successfully removed for player {player}.",
-        "queue_opened": "✅ Queue for kit **{kit}** successfully opened in channel {room}!",
-        "queue_closed": "🔒 Queue for kit **{kit}** has been closed.",
-        "cannot_close_active": "⚠️ Cannot close queue while tests are in progress!",
-        "tester_joined": "✅ Successfully joined as active tester for kit **{kit}**.",
-        "tester_left": "✅ Removed from active testers for kit **{kit}**.",
-        "already_tester": "⚠️ You are already listed as a tester in this queue!",
-        "not_tester": "⚠️ You are not listed as an active tester in this queue.",
-        "join_btn": "Join Queue",
-        "leave_btn": "Leave Queue",
-        "pull_btn": "Pull Player ⚔️",
-        "queue_empty": "_Queue is empty. Be first!_",
-        "no_testers": "_No active testers._",
-        "active_testers": "Active Testers",
-        "queue_title": "📝 {kit} Waitlist",
-        "queue_desc": "⏱️ Queue updates automatically.\nUse buttons below to join or leave.",
-        "result_title": "📝 Tier Test Result – {kit}",
-        "result_desc": "Tier test successfully completed for queue **{kit}**!",
-        "result_sent": "✅ Result logged, channel deleting soon.",
-        "test_started": "⚔️ Test started! Tester: {tester} | Player: {player}\nWhen done, run `/result` in this channel.",
-        "player_pulled": "✅ Player {player} pulled to {room}!",
-        "not_verified": "❌ You can't join queue until you link your account with `/verify <minecraft ign>`!",
-        "already_in_queue": "⚠️ You're already in this queue!",
-        "left_queue": "✅ Left queue.",
-        "not_in_queue": "⚠️ You're not in this queue."
-    },
-    "sk": {
-        "no_perms": "❌ Na tento príkaz nemáš oprávnenie!",
-        "verified_success": "✅ Úspešne verifikovaný Minecraft účet: **{ign}**",
-        "kit_created": "✅ Kit **{kit}** bol úspešne pridaný do databázy.",
-        "kit_exists": "⚠️ Kit **{kit}** už v databáze existuje.",
-        "kit_removed": "🗑️ Kit **{kit}** bol odstránený.",
-        "tier_role_set": "✅ Pre kit **{kit}** a tier **{tier}** bola nastavená rola **{role}**.",
-        "result_room_set": "✅ Result miestnosť nastavená na {room}.",
-        "helper_role_set": "✅ Helper rola nastavená na {role}.",
-        "queue_room_set": "✅ Fronta pre kit **{kit}** zviazaná s kanálom {room}.",
-        "kit_cat_set": "✅ Pre kit **{kit}** bola nastavená kategória **{cat}**.",
-        "lang_set": "🌐 Jazyk servera bol zmenený na **Slovenčinu**.",
-        "cooldown_set": "⏳ Cooldown pre **{tipo}** úspešne nastavený na **{time}**.",
-        "cooldown_removed": "✅ Cooldown typu **{tipo}** pre kit **{kit}** bol hráčovi {player} úspešne odstránený.",
-        "queue_opened": "✅ Fronta pre kit **{kit}** bola úspešne otvorená v kanáli {room}!",
-        "queue_closed": "🔒 Fronta pre kit **{kit}** bola zatvorená.",
-        "cannot_close_active": "⚠️ Nemôžeš zatvoriť frontu, pretože v nej stále prebiehajú testy!",
-        "tester_joined": "✅ Úspešne si sa pridal ako aktívny tester pre kit **{kit}**.",
-        "tester_left": "✅ Bol si odobraný z aktívnych testerov pre kit **{kit}**.",
-        "already_tester": "⚠️ Už si zapísaný ako tester v tejto fronte!",
-        "not_tester": "⚠️ Nie si vedený ako aktívny tester v tejto fronte.",
-        "join_btn": "Vstúpiť do fronty",
-        "leave_btn": "Opustiť frontu",
-        "pull_btn": "Vytiahnuť hráča ⚔️",
-        "queue_empty": "_Fronta je prázdna. Buď prvý!_",
-        "no_testers": "_Žiadni aktívni testeri._",
-        "active_testers": "Aktívni Testeri",
-        "queue_title": "📝 {kit} Waitlist",
-        "queue_desc": "⏱️ Fronta sa aktualizuje automaticky.\nPouži tlačidlá nižšie pre pridanie alebo odobranie.",
-        "result_title": "📝 Výsledok tier testu – {kit}",
-        "result_desc": "Tier test bol úspešne dokončený pre frontu **{kit}**!",
-        "result_sent": "✅ Výsledok bol úspešne zaznamenaný a táto miestnosť bude o chvíľu zmazaná.",
-        "test_started": "⚔️ Test začína! Tester: {tester} | Hráč: {player}\nPo dokončení zadajte `/result` priamo v tomto kanáli.",
-        "player_pulled": "✅ Hráč {player} bol vytiahnutý do miestnosti {room}!",
-        "not_verified": "❌ Nemôžeš vstúpiť do fronty, kým sa neprepojíš cez `/verify <minecraft ign>`!",
-        "already_in_queue": "⚠️ Už si v tejto fronte!",
-        "left_queue": "✅ Si vonku z fronty.",
-        "not_in_queue": "⚠️ Nie si v tejto fronte."
-    },
-    "de": {
-        "no_perms": "❌ Keine Berechtigung!", "verified_success": "✅ Verifiziert: **{ign}**", "kit_created": "✅ Kit erstellt.", "kit_exists": "⚠️ Existiert bereits.", "kit_removed": "🗑️ Entfernt.", "tier_role_set": "✅ Rolle gesetzt.", "result_room_set": "✅ Ergebniskanal gesetzt.", "helper_role_set": "✅ Helper gesetzt.", "queue_room_set": "✅ Warteschlange gebunden.", "kit_cat_set": "✅ Kategorie gesetzt.", "lang_set": "🌐 Sprache geändert.", "cooldown_set": "⏳ Cooldown für **{tipo}** auf **{time}** gesetzt.", "cooldown_removed": "✅ Cooldown für {player} entfernt.", "queue_opened": "✅ Offen!", "queue_closed": "🔒 Zu.", "cannot_close_active": "⚠️ Aktive Tests!", "tester_joined": "✅ Tester beigetreten.", "tester_left": "✅ Tester weg.", "already_tester": "⚠️ Schon Tester.", "not_tester": "⚠️ Kein Tester.", "join_btn": "Beitreten", "leave_btn": "Verlassen", "pull_btn": "Ziehen ⚔️", "queue_empty": "_Leer._", "no_testers": "_Keine._", "active_testers": "Tester", "queue_title": "📝 {kit}", "queue_desc": "⏱️ Auto", "result_title": "📝 Ergebnis – {kit}", "result_desc": "Fertig!", "result_sent": "✅ Gespeichert.", "test_started": "⚔️ Los!", "player_pulled": "✅ Gezogen!", "not_verified": "❌ Verifiziere dich!", "already_in_queue": "⚠️ Schon drin!", "left_queue": "✅ Verlassen.", "not_in_queue": "⚠️ Nicht drin."
-    },
-    "fr": {
-        "no_perms": "❌ Pas la permission !", "verified_success": "✅ Vérifié : **{ign}**", "kit_created": "✅ Kit ajouté.", "kit_exists": "⚠️ Existe déjà.", "kit_removed": "🗑️ Supprimé.", "tier_role_set": "✅ Rôle défini.", "result_room_set": "✅ Salon défini.", "helper_role_set": "✅ Rôle Helper défini.", "queue_room_set": "✅ File liée.", "kit_cat_set": "✅ Catégorie définie.", "lang_set": "🌐 Langue changée.", "cooldown_set": "⏳ Cooldown défini à **{time}**.", "cooldown_removed": "✅ Cooldown supprimé pour {player}.", "queue_opened": "✅ File ouverte !", "queue_closed": "🔒 File fermée.", "cannot_close_active": "⚠️ Tests en cours !", "tester_joined": "✅ Testeur rejoint.", "tester_left": "✅ Testeur parti.", "already_tester": "⚠️ Déjà testeur.", "not_tester": "⚠️ Pas testeur.", "join_btn": "Rejoindre", "leave_btn": "Quitter", "pull_btn": "Tirer ⚔️", "queue_empty": "_Vide._", "no_testers": "_Aucun._", "active_testers": "Testeurs", "queue_title": "📝 {kit}", "queue_desc": "⏱️ Auto", "result_title": "📝 Résultat – {kit}", "result_desc": "Terminé !", "result_sent": "✅ Enregistré.", "test_started": "⚔️ C'est parti !", "player_pulled": "✅ Tiré !", "not_verified": "❌ Vérifiez-vous !", "already_in_queue": "⚠️ Déjà dedans !", "left_queue": "✅ Parti.", "not_in_queue": "⚠️ Pas dedans."
-    },
-    "ru": {
-        "no_perms": "❌ Нет прав!", "verified_success": "✅ Привязано: **{ign}**", "kit_created": "✅ Набор создан.", "kit_exists": "⚠️ Уже есть.", "kit_removed": "🗑️ Удалено.", "tier_role_set": "✅ Роль установлена.", "result_room_set": "✅ Канал результатов.", "helper_role_set": "✅ Роль хелпера.", "queue_room_set": "✅ Очередь привязана.", "kit_cat_set": "✅ Категория.", "lang_set": "🌐 Язык изменен.", "cooldown_set": "⏳ Кулдаун установлен на **{time}**.", "cooldown_removed": "✅ Кулдаун для игрока {player} снят.", "queue_opened": "✅ Открыто!", "queue_closed": "🔒 Закрыто.", "cannot_close_active": "⚠️ Идут тесты!", "tester_joined": "✅ Тестер вошел.", "tester_left": "✅ Тестер вышел.", "already_tester": "⚠️ Вы уже тестер.", "not_tester": "⚠️ Вы не тестер.", "join_btn": "Войти", "leave_btn": "Выйти", "pull_btn": "Вызвать ⚔️", "queue_empty": "_Пусто._", "no_testers": "_Нет._", "active_testers": "Тестеры", "queue_title": "📝 {kit}", "queue_desc": "⏱️ Авто", "result_title": "📝 Результат – {kit}", "result_desc": "Готово!", "result_sent": "✅ Сохранено.", "test_started": "⚔️ Началось!", "player_pulled": "✅ Вызван!", "not_verified": "❌ Верифицируйтесь!", "already_in_queue": "⚠️ Уже в очереди!", "left_queue": "✅ Вышли.", "not_in_queue": "⚠️ Вас нет."
-    },
-    "it": {
-        "no_perms": "❌ Senza permessi!", "verified_success": "✅ Verificato: **{ign}**", "kit_created": "✅ Kit aggiunto.", "kit_exists": "⚠️ Esiste già.", "kit_removed": "🗑️ Rimosso.", "tier_role_set": "✅ Ruolo impostato.", "result_room_set": "✅ Canale impostato.", "helper_role_set": "✅ Helper impostato.", "queue_room_set": "✅ Coda collegata.", "kit_cat_set": "✅ Categoria impostata.", "lang_set": "🌐 Lingua cambiata.", "cooldown_set": "⏳ Cooldown impostato a **{time}**.", "cooldown_removed": "✅ Cooldown rimosso per {player}.", "queue_opened": "✅ Aperto!", "queue_closed": "🔒 Chiuso.", "cannot_close_active": "⚠️ Test attivi!", "tester_joined": "✅ Unito.", "tester_left": "✅ Uscito.", "already_tester": "⚠️ Già tester.", "not_tester": "⚠️ Non sei tester.", "join_btn": "Entra", "leave_btn": "Esci", "pull_btn": "Pulla ⚔️", "queue_empty": "_Vuoto._", "no_testers": "_Nessuno._", "active_testers": "Tester", "queue_title": "📝 {kit}", "queue_desc": "⏱️ Auto", "result_title": "📝 Risultato – {kit}", "result_desc": "Fatto!", "result_sent": "✅ Salvato.", "test_started": "⚔️ Inizio!", "player_pulled": "✅ Pullato!", "not_verified": "❌ Verificati!", "already_in_queue": "⚠️ Già in coda!", "left_queue": "✅ Uscito.", "not_in_queue": "⚠️ Non sei in coda."
-    },
-    "es": {
-        "no_perms": "❌ ¡Sin permisos!", "verified_success": "✅ Verificado: **{ign}**", "kit_created": "✅ Kit creado.", "kit_exists": "⚠️ Ya existe.", "kit_removed": "🗑️ Eliminado.", "tier_role_set": "✅ Rol configurado.", "result_room_set": "✅ Canal configurado.", "helper_role_set": "✅ Helper configurado.", "queue_room_set": "✅ Cola vinculada.", "kit_cat_set": "✅ Categoría configurada.", "lang_set": "🌐 Idioma cambiado.", "cooldown_set": "⏳ Cooldown configurado a **{time}**.", "cooldown_removed": "✅ Cooldown eliminado para {player}.", "queue_opened": "✅ ¡Abierto!", "queue_closed": "🔒 Cerrado.", "cannot_close_active": "⚠️ ¡Pruebas activas!", "tester_joined": "✅ Unido.", "tester_left": "✅ Fuera.", "already_tester": "⚠️ Ya eres tester.", "not_tester": "⚠️ No eres tester.", "join_btn": "Entrar", "leave_btn": "Salir", "pull_btn": "Jalar ⚔️", "queue_empty": "_Vacío._", "no_testers": "_Ninguno._", "active_testers": "Testers", "queue_title": "📝 {kit}", "queue_desc": "⏱️ Auto", "result_title": "📝 Resultado – {kit}", "result_desc": "¡Completado!", "result_sent": "✅ Guardado.", "test_started": "⚔️ ¡Empieza!", "player_pulled": "✅ ¡Jalado!", "not_verified": "❌ ¡Verifícate!", "already_in_queue": "⚠️ ¡Ya estás en la cola!", "left_queue": "✅ Saliste.", "not_in_queue": "⚠️ No estás."
     }
 }
 
@@ -189,7 +99,8 @@ def get_msg(guild_id: int, key: str, **kwargs) -> str:
     conn.close()
     
     lang = row[0] if row and row[0] in TRANSLATIONS else "cs"
-    msg = TRANSLATIONS[lang].get(key, TRANSLATIONS["cs"].get(key, ""))
+    dict_to_use = TRANSLATIONS.get(lang, TRANSLATIONS["cs"])
+    msg = dict_to_use.get(key, TRANSLATIONS["cs"].get(key, ""))
     return msg.format(**kwargs)
 
 def init_db():
@@ -262,7 +173,6 @@ async def kit_autocomplete(interaction: discord.Interaction, current: str):
     cursor.execute("SELECT name FROM kits")
     rows = cursor.fetchall()
     conn.close()
-    
     kits = [row[0] for row in rows]
     return [discord.app_commands.Choice(name=kit, value=kit) for kit in kits if current.lower() in kit.lower()]
 
@@ -278,6 +188,127 @@ async def on_ready():
     except Exception as e:
         print(f"❌ Chyba synchronizace: {e}")
 
+# --- NOVÉ PŘÍKAZY PRO ZÁLOHU A OBNOVU DATABÁZE ---
+@bot.tree.command(name="databaseinfo", description="Vygeneruje textový kód pro zálohu nastavení serveru.")
+async def databaseinfo(interaction: discord.Interaction):
+    if not await has_helper_perms(interaction):
+        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)
+
+    guild_id = str(interaction.guild.id)
+    conn = sqlite3.connect("tierbot.db")
+    cursor = conn.cursor()
+
+    # Získání nastavení serveru
+    cursor.execute("SELECT result_room, helper_role, language, cooldown_lt, cooldown_ht FROM server_settings WHERE guild_id = ?", (guild_id,))
+    settings = cursor.fetchone()
+
+    # Získání kitů
+    cursor.execute("SELECT name FROM kits")
+    kits = [row[0] for row in cursor.fetchall()]
+
+    # Získání rolí pro tiery
+    cursor.execute("SELECT kit, tier, role_id FROM tier_roles")
+    tier_roles = cursor.fetchall()
+
+    # Získání queue místností
+    cursor.execute("SELECT kit, channel_id FROM queue_rooms")
+    queue_rooms = cursor.fetchall()
+
+    # Získání kategorií
+    cursor.execute("SELECT kit, category_id FROM kit_categories")
+    kit_categories = cursor.fetchall()
+
+    conn.close()
+
+    lines = []
+    if settings:
+        result_room, helper_role, lang, cd_lt, cd_ht = settings
+        if lang: lines.append(f"lang:{lang}")
+        if cd_lt and cd_lt != "0": lines.append(f"cdlt:{cd_lt}")
+        if cd_ht and cd_ht != "0": lines.append(f"cdht:{cd_ht}")
+        if result_room: lines.append(f"resultroom:{result_room}")
+        if helper_role: lines.append(f"helperrole:{helper_role}")
+
+    for kit in kits:
+        lines.append(f"kit:{kit}")
+
+    for kit, tier, role_id in tier_roles:
+        lines.append(f"tierrole:{kit}|{tier}|{role_id}")
+
+    for kit, channel_id in queue_rooms:
+        lines.append(f"queueroom:{kit}|{channel_id}")
+
+    for kit, category_id in kit_categories:
+        lines.append(f"kitcat:{kit}|{category_id}")
+
+    backup_text = ";;".join(lines)
+    if not backup_text:
+        return await interaction.response.send_message("⚠️ V databázi nejsou uložena žádná nastavení k zálohování.", ephemeral=True)
+
+    # Poslání do soukromé zprávy, ať to nešamuje v chatu
+    try:
+        await interaction.user.send(f"📋 **Záloha databáze (zasetí do /database):**\n```text\n{backup_text}\n```")
+        await interaction.response.send_message("✅ Záloha databáze ti byla odeslána do soukromých zpráv (DM).", ephemeral=True)
+    except:
+        await interaction.response.send_message(f"📋 **Záloha:**\n```text\n{backup_text}\n```", ephemeral=True)
+
+@bot.tree.command(name="database", description="Hromadně obnoví nastavení serveru ze záložního kódu.")
+async def database(interaction: discord.Interaction, kod: str):
+    if not await has_helper_perms(interaction):
+        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)
+
+    guild_id = str(interaction.guild.id)
+    conn = sqlite3.connect("tierbot.db")
+    cursor = conn.cursor()
+
+    items = kod.split(";;")
+    count = 0
+
+    for item in items:
+        if ":" not in item:
+            continue
+        key, val = item.split(":", 1)
+
+        if key == "lang":
+            cursor.execute("INSERT INTO server_settings (guild_id, language) VALUES (?, ?) ON CONFLICT(guild_id) DO UPDATE SET language = ?", (guild_id, val, val))
+            count += 1
+        elif key == "cdlt":
+            cursor.execute("INSERT INTO server_settings (guild_id, cooldown_lt) VALUES (?, ?) ON CONFLICT(guild_id) DO UPDATE SET cooldown_lt = ?", (guild_id, val, val))
+            count += 1
+        elif key == "cdht":
+            cursor.execute("INSERT INTO server_settings (guild_id, cooldown_ht) VALUES (?, ?) ON CONFLICT(guild_id) DO UPDATE SET cooldown_ht = ?", (guild_id, val, val))
+            count += 1
+        elif key == "resultroom":
+            cursor.execute("INSERT INTO server_settings (guild_id, result_room) VALUES (?, ?) ON CONFLICT(guild_id) DO UPDATE SET result_room = ?", (guild_id, val, val))
+            count += 1
+        elif key == "helperrole":
+            cursor.execute("INSERT INTO server_settings (guild_id, helper_role) VALUES (?, ?) ON CONFLICT(guild_id) DO UPDATE SET helper_role = ?", (guild_id, val, val))
+            count += 1
+        elif key == "kit":
+            cursor.execute("INSERT OR IGNORE INTO kits (name) VALUES (?)", (val.lower(),))
+            count += 1
+        elif key == "tierrole":
+            parts = val.split("|")
+            if len(parts) == 3:
+                cursor.execute("INSERT OR REPLACE INTO tier_roles (kit, tier, role_id) VALUES (?, ?, ?)", (parts[0].lower(), parts[1], parts[2]))
+                count += 1
+        elif key == "queueroom":
+            parts = val.split("|")
+            if len(parts) == 2:
+                cursor.execute("INSERT OR REPLACE INTO queue_rooms (kit, channel_id) VALUES (?, ?)", (parts[0].lower(), parts[1]))
+                count += 1
+        elif key == "kitcat":
+            parts = val.split("|")
+            if len(parts) == 2:
+                cursor.execute("INSERT OR REPLACE INTO kit_categories (kit, category_id) VALUES (?, ?)", (parts[0].lower(), parts[1]))
+                count += 1
+
+    conn.commit()
+    conn.close()
+
+    await interaction.response.send_message(f"✅ Úspěšně obnoveno/nastaveno **{count}** položek z databázového kódu!", ephemeral=True)
+
+# --- OSTATNÍ PŘÍKAZY ---
 @bot.tree.command(name="language", description="Změní jazyk bota pro tento server.")
 @discord.app_commands.choices(jazyk=[
     discord.app_commands.Choice(name="🇨🇿 Čeština", value="cs"),
@@ -293,53 +324,37 @@ async def on_ready():
 async def language(interaction: discord.Interaction, jazyk: str):
     if not await has_helper_perms(interaction):
         return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)
-
     conn = sqlite3.connect("tierbot.db")
     cursor = conn.cursor()
-    cursor.execute("""
-        INSERT INTO server_settings (guild_id, language) VALUES (?, ?)
-        ON CONFLICT(guild_id) DO UPDATE SET language = ?
-    """, (str(interaction.guild.id), jazyk, jazyk))
+    cursor.execute("INSERT INTO server_settings (guild_id, language) VALUES (?, ?) ON CONFLICT(guild_id) DO UPDATE SET language = ?", (str(interaction.guild.id), jazyk, jazyk))
     conn.commit()
     conn.close()
     await interaction.response.send_message(get_msg(interaction.guild.id, "lang_set"), ephemeral=True)
 
 @bot.tree.command(name="cooldownset", description="Nastaví globální cooldown pro LT nebo HT tiery.")
-@discord.app_commands.choices(typ=[
-    discord.app_commands.Choice(name="LT", value="lt"),
-    discord.app_commands.Choice(name="HT", value="ht")
-])
+@discord.app_commands.choices(typ=[discord.app_commands.Choice(name="LT", value="lt"), discord.app_commands.Choice(name="HT", value="ht")])
 async def cooldownset(interaction: discord.Interaction, typ: str, cas: str):
     if not await has_helper_perms(interaction):
         return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)
-
     conn = sqlite3.connect("tierbot.db")
     cursor = conn.cursor()
     column = "cooldown_lt" if typ == "lt" else "cooldown_ht"
-    cursor.execute(f"""
-        INSERT INTO server_settings (guild_id, {column}) VALUES (?, ?)
-        ON CONFLICT(guild_id) DO UPDATE SET {column} = ?
-    """, (str(interaction.guild.id), cas, cas))
+    cursor.execute(f"INSERT INTO server_settings (guild_id, {column}) VALUES (?, ?) ON CONFLICT(guild_id) DO UPDATE SET {column} = ?", (str(interaction.guild.id), cas, cas))
     conn.commit()
     conn.close()
     await interaction.response.send_message(get_msg(interaction.guild.id, "cooldown_set", tipo=typ.upper(), time=cas), ephemeral=True)
 
 @bot.tree.command(name="removecooldown", description="Odstraní cooldown hráči podle výběru.")
 @discord.app_commands.autocomplete(kit=kit_autocomplete)
-@discord.app_commands.choices(typ=[
-    discord.app_commands.Choice(name="LT", value="lt"),
-    discord.app_commands.Choice(name="HT", value="ht")
-])
+@discord.app_commands.choices(typ=[discord.app_commands.Choice(name="LT", value="lt"), discord.app_commands.Choice(name="HT", value="ht")])
 async def removecooldown(interaction: discord.Interaction, kit: str, discord_hrac: discord.Member, typ: str):
     if not await has_helper_perms(interaction):
         return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)
-
     conn = sqlite3.connect("tierbot.db")
     cursor = conn.cursor()
     cursor.execute("DELETE FROM player_cooldowns WHERE discord_id = ? AND kit = ? AND type = ?", (str(discord_hrac.id), kit.lower(), typ.lower()))
     conn.commit()
     conn.close()
-
     await interaction.response.send_message(get_msg(interaction.guild.id, "cooldown_removed", tipo=typ.upper(), kit=kit, player=discord_hrac.mention), ephemeral=True)
 
 @bot.tree.command(name="cooldown", description="Zobrazí všechny aktivní cooldowny daného hráče.")
@@ -349,10 +364,8 @@ async def cooldown(interaction: discord.Interaction, player: discord.Member):
     cursor.execute("SELECT kit, type, cooldown_until FROM player_cooldowns WHERE discord_id = ?", (str(player.id),))
     rows = cursor.fetchall()
     conn.close()
-
     if not rows:
         return await interaction.response.send_message(f"✨ Uživatel {player.mention} nemá žádné aktivní cooldowny.", ephemeral=True)
-
     embed = discord.Embed(title=f"⏳ Cooldowny pro hráče {player.display_name}", color=discord.Color.orange())
     for kit, typ, until_str in rows:
         try:
@@ -361,10 +374,8 @@ async def cooldown(interaction: discord.Interaction, player: discord.Member):
                 embed.add_field(name=f"Kit: {kit.capitalize()} ({typ.upper()})", value=f"Do: {dt.strftime('%d.%m.%Y %H:%M')}", inline=False)
         except:
             pass
-
     if not embed.fields:
         return await interaction.response.send_message(f"✨ Uživatel {player.mention} nemá žádné aktivní cooldowny.", ephemeral=True)
-
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
 @bot.tree.command(name="verify", description="Propojí tvůj Discord účet s Minecraft IGN.")
@@ -380,7 +391,6 @@ async def verify(interaction: discord.Interaction, minecraft_ign: str):
 async def createkit(interaction: discord.Interaction, jmeno_kitu: str):
     if not await has_helper_perms(interaction):
         return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)
-    
     conn = sqlite3.connect("tierbot.db")
     cursor = conn.cursor()
     try:
@@ -397,7 +407,6 @@ async def createkit(interaction: discord.Interaction, jmeno_kitu: str):
 async def removekit(interaction: discord.Interaction, kit: str):
     if not await has_helper_perms(interaction):
         return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)
-    
     conn = sqlite3.connect("tierbot.db")
     cursor = conn.cursor()
     cursor.execute("DELETE FROM kits WHERE name = ?", (kit.lower(),))
@@ -410,7 +419,6 @@ async def removekit(interaction: discord.Interaction, kit: str):
 async def tieroleset(interaction: discord.Interaction, kit: str, tier: str, role: discord.Role):
     if not await has_helper_perms(interaction):
         return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)
-    
     conn = sqlite3.connect("tierbot.db")
     cursor = conn.cursor()
     cursor.execute("INSERT OR REPLACE INTO tier_roles (kit, tier, role_id) VALUES (?, ?, ?)", (kit.lower(), tier, str(role.id)))
@@ -422,13 +430,9 @@ async def tieroleset(interaction: discord.Interaction, kit: str, tier: str, role
 async def resultroomset(interaction: discord.Interaction, discord_roomka: discord.TextChannel):
     if not await has_helper_perms(interaction):
         return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)
-        
     conn = sqlite3.connect("tierbot.db")
     cursor = conn.cursor()
-    cursor.execute("""
-        INSERT INTO server_settings (guild_id, result_room) VALUES (?, ?)
-        ON CONFLICT(guild_id) DO UPDATE SET result_room = ?
-    """, (str(interaction.guild.id), str(discord_roomka.id), str(discord_roomka.id)))
+    cursor.execute("INSERT INTO server_settings (guild_id, result_room) VALUES (?, ?) ON CONFLICT(guild_id) DO UPDATE SET result_room = ?", (str(interaction.guild.id), str(discord_roomka.id), str(discord_roomka.id)))
     conn.commit()
     conn.close()
     await interaction.response.send_message(get_msg(interaction.guild.id, "result_room_set", room=discord_roomka.mention), ephemeral=True)
@@ -437,13 +441,9 @@ async def resultroomset(interaction: discord.Interaction, discord_roomka: discor
 async def helperoleset(interaction: discord.Interaction, role: discord.Role):
     if not await has_helper_perms(interaction):
         return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)
-        
     conn = sqlite3.connect("tierbot.db")
     cursor = conn.cursor()
-    cursor.execute("""
-        INSERT INTO server_settings (guild_id, helper_role) VALUES (?, ?)
-        ON CONFLICT(guild_id) DO UPDATE SET helper_role = ?
-    """, (str(interaction.guild.id), str(role.id), str(role.id)))
+    cursor.execute("INSERT INTO server_settings (guild_id, helper_role) VALUES (?, ?) ON CONFLICT(guild_id) DO UPDATE SET helper_role = ?", (str(interaction.guild.id), str(role.id), str(role.id)))
     conn.commit()
     conn.close()
     await interaction.response.send_message(get_msg(interaction.guild.id, "helper_role_set", role=role.mention), ephemeral=True)
@@ -453,7 +453,6 @@ async def helperoleset(interaction: discord.Interaction, role: discord.Role):
 async def queueroomset(interaction: discord.Interaction, discord_roomka: discord.TextChannel, kit: str):
     if not await has_helper_perms(interaction):
         return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)
-        
     conn = sqlite3.connect("tierbot.db")
     cursor = conn.cursor()
     cursor.execute("INSERT OR REPLACE INTO queue_rooms (kit, channel_id) VALUES (?, ?)", (kit.lower(), str(discord_roomka.id)))
@@ -466,7 +465,6 @@ async def queueroomset(interaction: discord.Interaction, discord_roomka: discord
 async def kitcategoryset(interaction: discord.Interaction, kit: str, kategorie: discord.CategoryChannel):
     if not await has_helper_perms(interaction):
         return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)
-        
     conn = sqlite3.connect("tierbot.db")
     cursor = conn.cursor()
     cursor.execute("INSERT OR REPLACE INTO kit_categories (kit, category_id) VALUES (?, ?)", (kit.lower(), str(kategorie.id)))
@@ -481,7 +479,6 @@ class QueueView(discord.ui.View):
         super().__init__(timeout=None)
         self.kit_name = kit_name
         self.guild_id = guild_id
-        
         self.children[0].label = get_msg(guild_id, "join_btn")
         self.children[1].label = get_msg(guild_id, "leave_btn")
         self.children[2].label = get_msg(guild_id, "pull_btn")
@@ -492,7 +489,6 @@ class QueueView(discord.ui.View):
         cursor = conn.cursor()
         cursor.execute("SELECT minecraft_ign FROM verified WHERE discord_id = ?", (str(interaction.user.id),))
         row = cursor.fetchone()
-
         cursor.execute("SELECT cooldown_until FROM player_cooldowns WHERE discord_id = ? AND kit = ?", (str(interaction.user.id), self.kit_name.lower()))
         cd_row = cursor.fetchone()
         conn.close()
@@ -551,10 +547,7 @@ class QueueView(discord.ui.View):
             return await interaction.response.send_message("⚠️ Hráč již není na serveru.", ephemeral=True)
 
         mc_ign = ign_row[0] if ign_row else player.name
-
-        target_category = None
-        if cat_row and cat_row[0]:
-            target_category = interaction.guild.get_channel(int(cat_row[0]))
+        target_category = interaction.guild.get_channel(int(cat_row[0])) if cat_row and cat_row[0] else None
 
         overwrites = {
             interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
@@ -562,9 +555,8 @@ class QueueView(discord.ui.View):
             interaction.user: discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True)
         }
 
-        channel_name = f"{mc_ign.lower()}-test"
         test_channel = await interaction.guild.create_text_channel(
-            name=channel_name,
+            name=f"{mc_ign.lower()}-test",
             category=target_category if isinstance(target_category, discord.CategoryChannel) else interaction.channel.category,
             overwrites=overwrites
         )
@@ -574,7 +566,6 @@ class QueueView(discord.ui.View):
             QUEUES[self.kit_name]["testers"].append(interaction.user.id)
 
         await update_queue_message(interaction.channel, self.kit_name, interaction.guild.id)
-
         await test_channel.send(get_msg(interaction.guild.id, "test_started", tester=interaction.user.mention, player=player.mention))
         await interaction.response.send_message(get_msg(interaction.guild.id, "player_pulled", player=player.mention, room=test_channel.mention), ephemeral=True)
 
@@ -583,15 +574,8 @@ def get_queue_embed(kit_name: str, guild_id: int):
     players_list = data["players"]
     testers_list = data["testers"]
 
-    if players_list:
-        players_str = "\n".join([f"{i+1}. <@{pid}>" for i, pid in enumerate(players_list)])
-    else:
-        players_str = get_msg(guild_id, "queue_empty")
-
-    if testers_list:
-        testers_str = "\n".join([f"{i+1}. <@{tid}>" for i, tid in enumerate(testers_list)])
-    else:
-        testers_str = get_msg(guild_id, "no_testers")
+    players_str = "\n".join([f"{i+1}. <@{pid}>" for i, pid in enumerate(players_list)]) if players_list else get_msg(guild_id, "queue_empty")
+    testers_str = "\n".join([f"{i+1}. <@{tid}>" for i, tid in enumerate(testers_list)]) if testers_list else get_msg(guild_id, "no_testers")
 
     embed = discord.Embed(
         title=get_msg(guild_id, "queue_title", kit=kit_name.capitalize()),
@@ -623,12 +607,11 @@ async def openqueue(interaction: discord.Interaction, kit: str):
     if not row or not row[0]:
         return await interaction.response.send_message(f"❌ Pro kit **{kit}** není nastavena queue místnost!", ephemeral=True)
 
-    channel_id = int(row[0])
-    target_channel = interaction.guild.get_channel(channel_id)
+    target_channel = interaction.guild.get_channel(int(row[0]))
     if not target_channel:
         return await interaction.response.send_message("❌ Kanál nebyl nalezen.", ephemeral=True)
 
-    QUEUES[kit.lower()] = {"players": [], "testers": [interaction.user.id]}
+    QUEUES[kit.lower()] = {"players": [], "testers": []}
     embed = get_queue_embed(kit.lower(), interaction.guild.id)
     
     await target_channel.send(content="@everyone", embed=embed, view=QueueView(kit.lower(), interaction.guild.id))
@@ -644,8 +627,28 @@ async def closequeue(interaction: discord.Interaction, kit: str):
     if kit_key in QUEUES and QUEUES[kit_key]["testers"]:
         return await interaction.response.send_message(get_msg(interaction.guild.id, "cannot_close_active"), ephemeral=True)
 
-    if kit_key in QUEUES:
-        QUEUES.pop(kit_key)
+    QUEUES.pop(kit_key, None)
+
+    conn = sqlite3.connect("tierbot.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT channel_id FROM queue_rooms WHERE kit = ?", (kit_key,))
+    row = cursor.fetchone()
+    conn.close()
+
+    if row and row[0]:
+        target_channel = interaction.guild.get_channel(int(row[0]))
+        if target_channel:
+            closed_embed = discord.Embed(
+                title=get_msg(interaction.guild.id, "closed_title", kit=kit.capitalize()),
+                description=get_msg(interaction.guild.id, "closed_desc"),
+                color=discord.Color.red()
+            )
+            closed_embed.set_footer(text=datetime.datetime.now().strftime("%d.%m.%Y %H:%M"))
+            
+            async for message in target_channel.history(limit=10):
+                if message.author == bot.user and message.embeds:
+                    await message.edit(embed=closed_embed, view=None)
+                    break
 
     await interaction.response.send_message(get_msg(interaction.guild.id, "queue_closed", kit=kit), ephemeral=True)
 
