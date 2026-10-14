@@ -18,9 +18,10 @@ TRANSLATIONS = {
         "result_room_set": "✅ Result místnost nastavena na {room}.",
         "helper_role_set": "✅ Helper role nastavena na {role}.",
         "queue_room_set": "✅ Fronta pro kit **{kit}** svázána s kanálem {room}.",
-        "kit_cat_set": "✅ Pro kit **{kit}** byla nastavena kategorie **{cat}**.",
+        "kit_cat_set": "✅ Pro kit **{kit}** byla nastavená kategorie **{cat}**.",
         "lang_set": "🌐 Jazyk serveru byl změněn na **Čeština**.",
         "cooldown_set": "⏳ Cooldown pro **{tipo}** úspěšně nastaven na **{time}**.",
+        "cooldown_removed": "✅ Cooldown typu **{tipo}** pro kit **{kit}** byl hráči {player} úspěšně odstraněn.",
         "queue_opened": "✅ Fronta pro kit **{kit}** byla úspěšně otevřena v kanálu {room}!",
         "queue_closed": "🔒 Fronta pro kit **{kit}** byla uzavřena.",
         "cannot_close_active": "⚠️ Nemůžeš zavřít frontu, protože v ní stále probíhají testy!",
@@ -59,6 +60,7 @@ TRANSLATIONS = {
         "kit_cat_set": "✅ Category **{cat}** set for kit **{kit}**.",
         "lang_set": "🌐 Server language set to **English (British)**.",
         "cooldown_set": "⏳ Cooldown for **{tipo}** successfully set to **{time}**.",
+        "cooldown_removed": "✅ Cooldown type **{tipo}** for kit **{kit}** successfully removed for player {player}.",
         "queue_opened": "✅ Queue for kit **{kit}** successfully opened in channel {room}!",
         "queue_closed": "🔒 Queue for kit **{kit}** has been closed.",
         "cannot_close_active": "⚠️ Cannot close queue while testing is ongoing!",
@@ -97,6 +99,7 @@ TRANSLATIONS = {
         "kit_cat_set": "✅ Category **{cat}** set for kit **{kit}**.",
         "lang_set": "🌐 Server language set to **English (American)**.",
         "cooldown_set": "⏳ Cooldown for **{tipo}** successfully set to **{time}**.",
+        "cooldown_removed": "✅ Cooldown type **{tipo}** for kit **{kit}** successfully removed for player {player}.",
         "queue_opened": "✅ Queue for kit **{kit}** successfully opened in channel {room}!",
         "queue_closed": "🔒 Queue for kit **{kit}** has been closed.",
         "cannot_close_active": "⚠️ Cannot close queue while tests are in progress!",
@@ -135,6 +138,7 @@ TRANSLATIONS = {
         "kit_cat_set": "✅ Pre kit **{kit}** bola nastavená kategória **{cat}**.",
         "lang_set": "🌐 Jazyk servera bol zmenený na **Slovenčinu**.",
         "cooldown_set": "⏳ Cooldown pre **{tipo}** úspešne nastavený na **{time}**.",
+        "cooldown_removed": "✅ Cooldown typu **{tipo}** pre kit **{kit}** bol hráčovi {player} úspešne odstránený.",
         "queue_opened": "✅ Fronta pre kit **{kit}** bola úspešne otvorená v kanáli {room}!",
         "queue_closed": "🔒 Fronta pre kit **{kit}** bola zatvorená.",
         "cannot_close_active": "⚠️ Nemôžeš zatvoriť frontu, pretože v nej stále prebiehajú testy!",
@@ -161,194 +165,19 @@ TRANSLATIONS = {
         "not_in_queue": "⚠️ Nie si v tejto fronte."
     },
     "de": {
-        "no_perms": "❌ Du hast keine Berechtigung für diesen Befehl!",
-        "verified_success": "✅ Minecraft-Konto erfolgreich verifiziert: **{ign}**",
-        "kit_created": "✅ Kit **{kit}** wurde zur Datenbank hinzugefügt.",
-        "kit_exists": "⚠️ Kit **{kit}** existiert bereits.",
-        "kit_removed": "🗑️ Kit **{kit}** wurde entfernt.",
-        "tier_role_set": "✅ Rolle **{role}** für Kit **{kit}** und Tier **{tier}** festgelegt.",
-        "result_room_set": "✅ Ergebniskanal auf {room} gesetzt.",
-        "helper_role_set": "✅ Helper-Rolle auf {role} gesetzt.",
-        "queue_room_set": "✅ Warteschlange für Kit **{kit}** an Kanal {room} gebunden.",
-        "kit_cat_set": "✅ Kategorie **{cat}** für Kit **{kit}** festgelegt.",
-        "lang_set": "🌐 Serversprache auf **Deutsch** geändert.",
-        "cooldown_set": "⏳ Cooldown für **{tipo}** erfolgreich auf **{time}** gesetzt.",
-        "queue_opened": "✅ Warteschlange für Kit **{kit}** in Kanal {room} geöffnet!",
-        "queue_closed": "🔒 Warteschlange für Kit **{kit}** wurde geschlossen.",
-        "cannot_close_active": "⚠️ Warteschlange kann während aktiver Tests nicht geschlossen werden!",
-        "tester_joined": "✅ Erfogreich als aktiver Tester für Kit **{kit}** beigetreten.",
-        "tester_left": "✅ Als aktiver Tester für Kit **{kit}** entfernt.",
-        "already_tester": "⚠️ Du bist bereits als Tester eingetragen!",
-        "not_tester": "⚠️ Du bist kein aktiver Tester.",
-        "join_btn": "Beitreten",
-        "leave_btn": "Verlassen",
-        "pull_btn": "Ziehen ⚔️",
-        "queue_empty": "_Leer._",
-        "no_testers": "_Keine Tester._",
-        "active_testers": "Tester",
-        "queue_title": "📝 {kit}",
-        "queue_desc": "⏱️ Update...",
-        "result_title": "📝 Ergebnis – {kit}",
-        "result_desc": "Test beendet!",
-        "result_sent": "✅ Gespeichert.",
-        "test_started": "⚔️ Start!",
-        "player_pulled": "✅ Spieler gezogen!",
-        "not_verified": "❌ Bitte verifiziere dich!",
-        "already_in_queue": "⚠️ Du bist bereits drin!",
-        "left_queue": "✅ Verlassen.",
-        "not_in_queue": "⚠️ Du bist nicht drin."
+        "no_perms": "❌ Keine Berechtigung!", "verified_success": "✅ Verifiziert: **{ign}**", "kit_created": "✅ Kit erstellt.", "kit_exists": "⚠️ Existiert bereits.", "kit_removed": "🗑️ Entfernt.", "tier_role_set": "✅ Rolle gesetzt.", "result_room_set": "✅ Ergebniskanal gesetzt.", "helper_role_set": "✅ Helper gesetzt.", "queue_room_set": "✅ Warteschlange gebunden.", "kit_cat_set": "✅ Kategorie gesetzt.", "lang_set": "🌐 Sprache geändert.", "cooldown_set": "⏳ Cooldown für **{tipo}** auf **{time}** gesetzt.", "cooldown_removed": "✅ Cooldown für {player} entfernt.", "queue_opened": "✅ Offen!", "queue_closed": "🔒 Zu.", "cannot_close_active": "⚠️ Aktive Tests!", "tester_joined": "✅ Tester beigetreten.", "tester_left": "✅ Tester weg.", "already_tester": "⚠️ Schon Tester.", "not_tester": "⚠️ Kein Tester.", "join_btn": "Beitreten", "leave_btn": "Verlassen", "pull_btn": "Ziehen ⚔️", "queue_empty": "_Leer._", "no_testers": "_Keine._", "active_testers": "Tester", "queue_title": "📝 {kit}", "queue_desc": "⏱️ Auto", "result_title": "📝 Ergebnis – {kit}", "result_desc": "Fertig!", "result_sent": "✅ Gespeichert.", "test_started": "⚔️ Los!", "player_pulled": "✅ Gezogen!", "not_verified": "❌ Verifiziere dich!", "already_in_queue": "⚠️ Schon drin!", "left_queue": "✅ Verlassen.", "not_in_queue": "⚠️ Nicht drin."
     },
     "fr": {
-        "no_perms": "❌ Pas la permission !",
-        "verified_success": "✅ Compte vérifié : **{ign}**",
-        "kit_created": "✅ Kit **{kit}** ajouté.",
-        "kit_exists": "⚠️ Kit existe déjà.",
-        "kit_removed": "🗑️ Kit supprimé.",
-        "tier_role_set": "✅ Rôle défini.",
-        "result_room_set": "✅ Salon défini.",
-        "helper_role_set": "✅ Rôle Helper défini.",
-        "queue_room_set": "✅ File liée.",
-        "kit_cat_set": "✅ Catégorie définie.",
-        "lang_set": "🌐 Langue changée.",
-        "cooldown_set": "⏳ Cooldown défini à **{time}** pour **{tipo}**.",
-        "queue_opened": "✅ File ouverte !",
-        "queue_closed": "🔒 File fermée.",
-        "cannot_close_active": "⚠️ Tests en cours !",
-        "tester_joined": "✅ Testeur rejoint.",
-        "tester_left": "✅ Testeur parti.",
-        "already_tester": "⚠️ Déjà testeur.",
-        "not_tester": "⚠️ Pas testeur.",
-        "join_btn": "Rejoindre",
-        "leave_btn": "Quitter",
-        "pull_btn": "Tirer ⚔️",
-        "queue_empty": "_Vide._",
-        "no_testers": "_Aucun._",
-        "active_testers": "Testeurs",
-        "queue_title": "📝 {kit}",
-        "queue_desc": "⏱️ Auto",
-        "result_title": "📝 Résultat – {kit}",
-        "result_desc": "Terminé !",
-        "result_sent": "✅ Enregistré.",
-        "test_started": "⚔️ C'est parti !",
-        "player_pulled": "✅ Tiré !",
-        "not_verified": "❌ Vérifiez-vous !",
-        "already_in_queue": "⚠️ Déjà dedans !",
-        "left_queue": "✅ Parti.",
-        "not_in_queue": "⚠️ Pas dedans."
+        "no_perms": "❌ Pas la permission !", "verified_success": "✅ Vérifié : **{ign}**", "kit_created": "✅ Kit ajouté.", "kit_exists": "⚠️ Existe déjà.", "kit_removed": "🗑️ Supprimé.", "tier_role_set": "✅ Rôle défini.", "result_room_set": "✅ Salon défini.", "helper_role_set": "✅ Rôle Helper défini.", "queue_room_set": "✅ File liée.", "kit_cat_set": "✅ Catégorie définie.", "lang_set": "🌐 Langue changée.", "cooldown_set": "⏳ Cooldown défini à **{time}**.", "cooldown_removed": "✅ Cooldown supprimé pour {player}.", "queue_opened": "✅ File ouverte !", "queue_closed": "🔒 File fermée.", "cannot_close_active": "⚠️ Tests en cours !", "tester_joined": "✅ Testeur rejoint.", "tester_left": "✅ Testeur parti.", "already_tester": "⚠️ Déjà testeur.", "not_tester": "⚠️ Pas testeur.", "join_btn": "Rejoindre", "leave_btn": "Quitter", "pull_btn": "Tirer ⚔️", "queue_empty": "_Vide._", "no_testers": "_Aucun._", "active_testers": "Testeurs", "queue_title": "📝 {kit}", "queue_desc": "⏱️ Auto", "result_title": "📝 Résultat – {kit}", "result_desc": "Terminé !", "result_sent": "✅ Enregistré.", "test_started": "⚔️ C'est parti !", "player_pulled": "✅ Tiré !", "not_verified": "❌ Vérifiez-vous !", "already_in_queue": "⚠️ Déjà dedans !", "left_queue": "✅ Parti.", "not_in_queue": "⚠️ Pas dedans."
     },
     "ru": {
-        "no_perms": "❌ Нет прав!",
-        "verified_success": "✅ Привязано: **{ign}**",
-        "kit_created": "✅ Набор создан.",
-        "kit_exists": "⚠️ Уже есть.",
-        "kit_removed": "🗑️ Удалено.",
-        "tier_role_set": "✅ Роль установлена.",
-        "result_room_set": "✅ Канал результатов.",
-        "helper_role_set": "✅ Роль хелпера.",
-        "queue_room_set": "✅ Очередь привязана.",
-        "kit_cat_set": "✅ Категория.",
-        "lang_set": "🌐 Язык изменен.",
-        "cooldown_set": "⏳ Кулдаун для **{tipo}** установлен на **{time}**.",
-        "queue_opened": "✅ Открыто!",
-        "queue_closed": "🔒 Закрыто.",
-        "cannot_close_active": "⚠️ Идут тесты!",
-        "tester_joined": "✅ Тестер вошел.",
-        "tester_left": "✅ Тестер вышел.",
-        "already_tester": "⚠️ Вы уже тестер.",
-        "not_tester": "⚠️ Вы не тестер.",
-        "join_btn": "Войти",
-        "leave_btn": "Выйти",
-        "pull_btn": "Вызвать ⚔️",
-        "queue_empty": "_Пусто._",
-        "no_testers": "_Нет._",
-        "active_testers": "Тестеры",
-        "queue_title": "📝 {kit}",
-        "queue_desc": "⏱️ Авто",
-        "result_title": "📝 Результат – {kit}",
-        "result_desc": "Готово!",
-        "result_sent": "✅ Сохранено.",
-        "test_started": "⚔️ Началось!",
-        "player_pulled": "✅ Вызван!",
-        "not_verified": "❌ Верифицируйтесь!",
-        "already_in_queue": "⚠️ Уже в очереди!",
-        "left_queue": "✅ Вышли.",
-        "not_in_queue": "⚠️ Вас нет."
+        "no_perms": "❌ Нет прав!", "verified_success": "✅ Привязано: **{ign}**", "kit_created": "✅ Набор создан.", "kit_exists": "⚠️ Уже есть.", "kit_removed": "🗑️ Удалено.", "tier_role_set": "✅ Роль установлена.", "result_room_set": "✅ Канал результатов.", "helper_role_set": "✅ Роль хелпера.", "queue_room_set": "✅ Очередь привязана.", "kit_cat_set": "✅ Категория.", "lang_set": "🌐 Язык изменен.", "cooldown_set": "⏳ Кулдаун установлен на **{time}**.", "cooldown_removed": "✅ Кулдаун для игрока {player} снят.", "queue_opened": "✅ Открыто!", "queue_closed": "🔒 Закрыто.", "cannot_close_active": "⚠️ Идут тесты!", "tester_joined": "✅ Тестер вошел.", "tester_left": "✅ Тестер вышел.", "already_tester": "⚠️ Вы уже тестер.", "not_tester": "⚠️ Вы не тестер.", "join_btn": "Войти", "leave_btn": "Выйти", "pull_btn": "Вызвать ⚔️", "queue_empty": "_Пусто._", "no_testers": "_Нет._", "active_testers": "Тестеры", "queue_title": "📝 {kit}", "queue_desc": "⏱️ Авто", "result_title": "📝 Результат – {kit}", "result_desc": "Готово!", "result_sent": "✅ Сохранено.", "test_started": "⚔️ Началось!", "player_pulled": "✅ Вызван!", "not_verified": "❌ Верифицируйтесь!", "already_in_queue": "⚠️ Уже в очереди!", "left_queue": "✅ Вышли.", "not_in_queue": "⚠️ Вас нет."
     },
     "it": {
-        "no_perms": "❌ Senza permessi!",
-        "verified_success": "✅ Verificato: **{ign}**",
-        "kit_created": "✅ Kit aggiunto.",
-        "kit_exists": "⚠️ Esiste già.",
-        "kit_removed": "🗑️ Rimosso.",
-        "tier_role_set": "✅ Ruolo impostato.",
-        "result_room_set": "✅ Canale impostato.",
-        "helper_role_set": "✅ Helper impostato.",
-        "queue_room_set": "✅ Coda collegata.",
-        "kit_cat_set": "✅ Categoria impostata.",
-        "lang_set": "🌐 Lingua cambiata.",
-        "cooldown_set": "⏳ Cooldown per **{tipo}** impostato a **{time}**.",
-        "queue_opened": "✅ Aperto!",
-        "queue_closed": "🔒 Chiuso.",
-        "cannot_close_active": "⚠️ Test attivi!",
-        "tester_joined": "✅ Unito.",
-        "tester_left": "✅ Uscito.",
-        "already_tester": "⚠️ Già tester.",
-        "not_tester": "⚠️ Non sei tester.",
-        "join_btn": "Entra",
-        "leave_btn": "Esci",
-        "pull_btn": "Pulla ⚔️",
-        "queue_empty": "_Vuoto._",
-        "no_testers": "_Nessuno._",
-        "active_testers": "Tester",
-        "queue_title": "📝 {kit}",
-        "queue_desc": "⏱️ Auto",
-        "result_title": "📝 Risultato – {kit}",
-        "result_desc": "Fatto!",
-        "result_sent": "✅ Salvato.",
-        "test_started": "⚔️ Inizio!",
-        "player_pulled": "✅ Pullato!",
-        "not_verified": "❌ Verificati!",
-        "already_in_queue": "⚠️ Già in coda!",
-        "left_queue": "✅ Uscito.",
-        "not_in_queue": "⚠️ Non sei in coda."
+        "no_perms": "❌ Senza permessi!", "verified_success": "✅ Verificato: **{ign}**", "kit_created": "✅ Kit aggiunto.", "kit_exists": "⚠️ Esiste già.", "kit_removed": "🗑️ Rimosso.", "tier_role_set": "✅ Ruolo impostato.", "result_room_set": "✅ Canale impostato.", "helper_role_set": "✅ Helper impostato.", "queue_room_set": "✅ Coda collegata.", "kit_cat_set": "✅ Categoria impostata.", "lang_set": "🌐 Lingua cambiata.", "cooldown_set": "⏳ Cooldown impostato a **{time}**.", "cooldown_removed": "✅ Cooldown rimosso per {player}.", "queue_opened": "✅ Aperto!", "queue_closed": "🔒 Chiuso.", "cannot_close_active": "⚠️ Test attivi!", "tester_joined": "✅ Unito.", "tester_left": "✅ Uscito.", "already_tester": "⚠️ Già tester.", "not_tester": "⚠️ Non sei tester.", "join_btn": "Entra", "leave_btn": "Esci", "pull_btn": "Pulla ⚔️", "queue_empty": "_Vuoto._", "no_testers": "_Nessuno._", "active_testers": "Tester", "queue_title": "📝 {kit}", "queue_desc": "⏱️ Auto", "result_title": "📝 Risultato – {kit}", "result_desc": "Fatto!", "result_sent": "✅ Salvato.", "test_started": "⚔️ Inizio!", "player_pulled": "✅ Pullato!", "not_verified": "❌ Verificati!", "already_in_queue": "⚠️ Già in coda!", "left_queue": "✅ Uscito.", "not_in_queue": "⚠️ Non sei in coda."
     },
     "es": {
-        "no_perms": "❌ ¡Sin permisos!",
-        "verified_success": "✅ Verificado: **{ign}**",
-        "kit_created": "✅ Kit creado.",
-        "kit_exists": "⚠️ Ya existe.",
-        "kit_removed": "🗑️ Eliminado.",
-        "tier_role_set": "✅ Rol configurado.",
-        "result_room_set": "✅ Canal configurado.",
-        "helper_role_set": "✅ Helper configurado.",
-        "queue_room_set": "✅ Cola vinculada.",
-        "kit_cat_set": "✅ Categoría configurada.",
-        "lang_set": "🌐 Idioma cambiado.",
-        "cooldown_set": "⏳ Cooldown para **{tipo}** configurado a **{time}**.",
-        "queue_opened": "✅ ¡Abierto!",
-        "queue_closed": "🔒 Cerrado.",
-        "cannot_close_active": "⚠️ ¡Pruebas activas!",
-        "tester_joined": "✅ Unido.",
-        "tester_left": "✅ Fuera.",
-        "already_tester": "⚠️ Ya eres tester.",
-        "not_tester": "⚠️ No eres tester.",
-        "join_btn": "Entrar",
-        "leave_btn": "Salir",
-        "pull_btn": "Jalar ⚔️",
-        "queue_empty": "_Vacío._",
-        "no_testers": "_Ninguno._",
-        "active_testers": "Testers",
-        "queue_title": "📝 {kit}",
-        "queue_desc": "⏱️ Auto",
-        "result_title": "📝 Resultado – {kit}",
-        "result_desc": "¡Completado!",
-        "result_sent": "✅ Guardado.",
-        "test_started": "⚔️ ¡Empieza!",
-        "player_pulled": "✅ ¡Jalado!",
-        "not_verified": "❌ ¡Verifícate!",
-        "already_in_queue": "⚠️ ¡Ya estás en la cola!",
-        "left_queue": "✅ Saliste.",
-        "not_in_queue": "⚠️ No estás."
+        "no_perms": "❌ ¡Sin permisos!", "verified_success": "✅ Verificado: **{ign}**", "kit_created": "✅ Kit creado.", "kit_exists": "⚠️ Ya existe.", "kit_removed": "🗑️ Eliminado.", "tier_role_set": "✅ Rol configurado.", "result_room_set": "✅ Canal configurado.", "helper_role_set": "✅ Helper configurado.", "queue_room_set": "✅ Cola vinculada.", "kit_cat_set": "✅ Categoría configurada.", "lang_set": "🌐 Idioma cambiado.", "cooldown_set": "⏳ Cooldown configurado a **{time}**.", "cooldown_removed": "✅ Cooldown eliminado para {player}.", "queue_opened": "✅ ¡Abierto!", "queue_closed": "🔒 Cerrado.", "cannot_close_active": "⚠️ ¡Pruebas activas!", "tester_joined": "✅ Unido.", "tester_left": "✅ Fuera.", "already_tester": "⚠️ Ya eres tester.", "not_tester": "⚠️ No eres tester.", "join_btn": "Entrar", "leave_btn": "Salir", "pull_btn": "Jalar ⚔️", "queue_empty": "_Vacío._", "no_testers": "_Ninguno._", "active_testers": "Testers", "queue_title": "📝 {kit}", "queue_desc": "⏱️ Auto", "result_title": "📝 Resultado – {kit}", "result_desc": "¡Completado!", "result_sent": "✅ Guardado.", "test_started": "⚔️ ¡Empieza!", "player_pulled": "✅ ¡Jalado!", "not_verified": "❌ ¡Verifícate!", "already_in_queue": "⚠️ ¡Ya estás en la cola!", "left_queue": "✅ Saliste.", "not_in_queue": "⚠️ No estás."
     }
 }
 
@@ -363,7 +192,7 @@ def get_msg(guild_id: int, key: str, **kwargs) -> str:
     msg = TRANSLATIONS[lang].get(key, TRANSLATIONS["cs"].get(key, ""))
     return msg.format(**kwargs)
 
-# 2. Inicializace databáze
+# 2. Inicializace databáze (zajištěno, že tabulky se NIKDY nemažou)
 def init_db():
     conn = sqlite3.connect("tierbot.db")
     cursor = conn.cursor()
@@ -383,7 +212,16 @@ def init_db():
     cursor.execute("CREATE TABLE IF NOT EXISTS queue_rooms (kit TEXT PRIMARY KEY, channel_id TEXT)")
     cursor.execute("CREATE TABLE IF NOT EXISTS kit_categories (kit TEXT PRIMARY KEY, category_id TEXT)")
     cursor.execute("CREATE TABLE IF NOT EXISTS player_tiers (discord_id TEXT, kit TEXT, tier TEXT, PRIMARY KEY (discord_id, kit))")
-    cursor.execute("CREATE TABLE IF NOT EXISTS player_cooldowns (discord_id TEXT, cooldown_until TEXT, PRIMARY KEY (discord_id))")
+    # Tabulka pro cooldowny odděleně pro každého hráče a konkrétní kit + typ (lt/ht)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS player_cooldowns (
+            discord_id TEXT,
+            kit TEXT,
+            type TEXT,
+            cooldown_until TEXT,
+            PRIMARY KEY (discord_id, kit, type)
+        )
+    """)
     conn.commit()
     conn.close()
 
@@ -466,10 +304,9 @@ async def language(interaction: discord.Interaction, jazyk: str):
     """, (str(interaction.guild.id), jazyk, jazyk))
     conn.commit()
     conn.close()
-
     await interaction.response.send_message(get_msg(interaction.guild.id, "lang_set"), ephemeral=True)
 
-@bot.tree.command(name="cooldownset", description="Nastaví cooldown pro LT nebo HT tiery.")
+@bot.tree.command(name="cooldownset", description="Nastaví globální cooldown pro LT nebo HT tiery.")
 @discord.app_commands.choices(typ=[
     discord.app_commands.Choice(name="LT", value="lt"),
     discord.app_commands.Choice(name="HT", value="ht")
@@ -487,8 +324,50 @@ async def cooldownset(interaction: discord.Interaction, typ: str, cas: str):
     """, (str(interaction.guild.id), cas, cas))
     conn.commit()
     conn.close()
-
     await interaction.response.send_message(get_msg(interaction.guild.id, "cooldown_set", tipo=typ.upper(), time=cas), ephemeral=True)
+
+@bot.tree.command(name="removecooldown", description="Odstraní cooldown hráči podle výběru.")
+@discord.app_commands.autocomplete(kit=kit_autocomplete)
+@discord.app_commands.choices(typ=[
+    discord.app_commands.Choice(name="LT", value="lt"),
+    discord.app_commands.Choice(name="HT", value="ht")
+])
+async def removecooldown(interaction: discord.Interaction, kit: str, discord_hrac: discord.Member, typ: str):
+    if not await has_helper_perms(interaction):
+        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)
+
+    conn = sqlite3.connect("tierbot.db")
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM player_cooldowns WHERE discord_id = ? AND kit = ? AND type = ?", (str(discord_hrac.id), kit.lower(), typ.lower()))
+    conn.commit()
+    conn.close()
+
+    await interaction.response.send_message(get_msg(interaction.guild.id, "cooldown_removed", tipo=typ.upper(), kit=kit, player=discord_hrac.mention), ephemeral=True)
+
+@bot.tree.command(name="cooldown", description="Zobrazí všechny aktivní cooldowny daného hráče.")
+async def cooldown(interaction: discord.Interaction, player: discord.Member):
+    conn = sqlite3.connect("tierbot.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT kit, type, cooldown_until FROM player_cooldowns WHERE discord_id = ?", (str(player.id),))
+    rows = cursor.fetchall()
+    conn.close()
+
+    if not rows:
+        return await interaction.response.send_message(f"✨ Uživatel {player.mention nemá žádné aktivní cooldowny.", ephemeral=True)
+
+    embed = discord.Embed(title=f"⏳ Cooldowny pro hráча {player.display_name}", color=discord.Color.orange())
+    for kit, typ, until_str in rows:
+        try:
+            dt = datetime.datetime.fromisoformat(until_str)
+            if datetime.datetime.now() < dt:
+                embed.add_field(name=f"Kit: {kit.capitalize()} ({typ.upper()})", value=f"Do: {dt.strftime('%d.%m.%Y %H:%M')}", inline=False)
+        except:
+            pass
+
+    if not embed.fields:
+        return await interaction.response.send_message(f"✨ Uživatel {player.mention} nemá žádné aktivní (vypršelé) cooldowny.", ephemeral=True)
+
+    await interaction.response.send_message(embed=embed, ephemeral=True)
 
 @bot.tree.command(name="verify", description="Propojí tvůj Discord účet s Minecraft IGN.")
 async def verify(interaction: discord.Interaction, minecraft_ign: str):
@@ -616,8 +495,7 @@ class QueueView(discord.ui.View):
         cursor.execute("SELECT minecraft_ign FROM verified WHERE discord_id = ?", (str(interaction.user.id),))
         row = cursor.fetchone()
 
-        # Kontrola cooldownu před vstupem do fronty
-        cursor.execute("SELECT cooldown_until FROM player_cooldowns WHERE discord_id = ?", (str(interaction.user.id),))
+        cursor.execute("SELECT cooldown_until FROM player_cooldowns WHERE discord_id = ? AND kit = ?", (str(interaction.user.id), self.kit_name.lower()))
         cd_row = cursor.fetchone()
         conn.close()
 
@@ -625,8 +503,8 @@ class QueueView(discord.ui.View):
             try:
                 cd_time = datetime.datetime.fromisoformat(cd_row[0])
                 if datetime.datetime.now() < cd_time:
-                    return await interaction.response.send_message(f"⏳ Máš cooldown až do **{cd_time.strftime('%d.%m.%Y %H:%M')}**!", ephemeral=True)
-            except Exception:
+                    return await interaction.response.send_message(f"⏳ Cooldown aktivní do **{cd_time.strftime('%d.%m.%Y %H:%M')}**!", ephemeral=True)
+            except:
                 pass
 
         if not row:
@@ -824,11 +702,9 @@ async def result(interaction: discord.Interaction, discord_hrac: discord.Member,
     cursor.execute("SELECT result_room, cooldown_lt, cooldown_ht FROM server_settings WHERE guild_id = ?", (str(interaction.guild.id),))
     settings_row = cursor.fetchone()
 
-    # Výpočet a uložení cooldownu podle toho, jestli tier začíná na LT nebo HT
     is_lt = tier.startswith("LT") or tier.startswith("RLT")
     cd_setting = (settings_row[1] if is_lt else settings_row[2]) if settings_row else "0"
 
-    # Parsování hodnoty cooldownu (např. "5d" -> 5 dní, "12h" -> 12 hodin)
     delta_days = 0
     delta_hours = 0
     if cd_setting.endswith("d"):
@@ -840,7 +716,8 @@ async def result(interaction: discord.Interaction, discord_hrac: discord.Member,
 
     if delta_days > 0 or delta_hours > 0:
         expiry = datetime.datetime.now() + datetime.timedelta(days=delta_days, hours=delta_hours)
-        cursor.execute("INSERT OR REPLACE INTO player_cooldowns (discord_id, cooldown_until) VALUES (?, ?)", (str(discord_hrac.id), expiry.isoformat()))
+        cd_type = "lt" if is_lt else "ht"
+        cursor.execute("INSERT OR REPLACE INTO player_cooldowns (discord_id, kit, type, cooldown_until) VALUES (?, ?, ?, ?)", (str(discord_hrac.id), kit.lower(), cd_type, expiry.isoformat()))
 
     conn.commit()
     conn.close()
