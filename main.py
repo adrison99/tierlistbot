@@ -5,7 +5,6 @@ import asyncio
 import discord
 from discord.ext import commands
 
-# 1. Nastavení databáze SQLite
 def init_db():
     conn = sqlite3.connect("tierbot.db")
     cursor = conn.cursor()
@@ -220,6 +219,54 @@ async def queueroomset(interaction: discord.Interaction, discord_roomka: discord
 
 QUEUES = {}
 
+# Menu pro výběr místnosti, kam se má hráč pullnout
+class RoomSelectView(discord.ui.View):
+    def __init__(self, kit_name: str, player_member: discord.Member):
+        super().__init__(timeout=60)
+        self.kit_name = kit_name
+        self.player_member = player_member
+
+    @discord.ui.select(
+        cls=discord.ui.ChannelSelect,
+        placeholder="Vyber místnost pro pullnutí hráče...",
+        channel_types=[discord.ChannelType.text, discord.ChannelType.voice],
+        min_values=1,
+        max_values=1
+    )
+    async def select_room(self, interaction: discord.Interaction, select: discord.ui.ChannelSelect):
+        chosen_channel = select.values[0]
+
+        # Odebrání hráče z fronty
+        if self.kit_name in QUEUES and self.player_member.id in QUEUES[self.kit_name]["players"]:
+            QUEUES[self.kit_name]["players"].remove(self.player_member.id)
+
+        # Přidání testera do aktivních testerů
+        if interaction.user.id not in QUEUES[self.kit_name]["testers"]:
+            QUEUES[self.kit_name]["testers"].append(interaction.user.id)
+
+        # Aktualizace zprávy s frontou
+        async for message in interaction.channel.history(limit=10):
+            if message.author == bot.user and message.embeds:
+                await message.edit(embed=get_queue_embed(self.kit_name), view=QueueView(self.kit_name))
+                break
+
+        # Nastavení oprávnění / přístupu podle typu kanálu
+        try:
+            if isinstance(chosen_channel, discord.TextChannel):
+                await chosen_channel.set_permissions(self.player_member, view_channel=True, send_messages=True)
+                await chosen_channel.set_permissions(interaction.user, view_channel=True, send_messages=True)
+                await chosen_channel.send(f"⚔️ {self.player_member.mention} byl pullován do této místnosti testerem {interaction.user.mention}! Test začíná.")
+            elif isinstance(chosen_channel, discord.VoiceChannel):
+                await chosen_channel.set_permissions(self.player_member, view_channel=True, connect=True, speak=True)
+                await chosen_channel.set_permissions(interaction.user, view_channel=True, connect=True, speak=True)
+                # Pokud je to hlasovka, pošleme zprávu do chatboxu spojeného s hlasovkou (nebo do výchozího kanálu)
+                if chosen_channel.text_channels:
+                    await chosen_channel.text_channels[0].send(f"⚔️ {self.player_member.mention} byl pullován do hlasovky testerem {interaction.user.mention}!")
+        except Exception as e:
+            print(f"Chyba při nastavování práv: {e}")
+
+        await interaction.response.send_message(f"✅ Hráč {self.player_member.mention} byl úspěšně vytažen a přiřazen do místnosti {chosen_channel.mention}!", ephemeral=True)
+
 class QueueView(discord.ui.View):
     def __init__(self, kit_name: str):
         super().__init__(timeout=None)
@@ -263,26 +310,16 @@ class QueueView(discord.ui.View):
         if self.kit_name not in QUEUES or not QUEUES[self.kit_name]["players"]:
             return await interaction.response.send_message("⚠️ Fronta je prázdná!", ephemeral=True)
 
-        if interaction.user.id not in QUEUES[self.kit_name]["testers"]:
-            QUEUES[self.kit_name]["testers"].append(interaction.user.id)
-
-        player_id = QUEUES[self.kit_name]["players"].pop(0)
+        player_id = QUEUES[self.kit_name]["players"][0]
         player = interaction.guild.get_member(player_id)
         
-        await update_queue_message(interaction.channel, self.kit_name)
-        
         if not player:
-            return await interaction.response.send_message("⚠️ Hráč již není na serveru.", ephemeral=True)
+            QUEUES[self.kit_name]["players"].pop(0)
+            return await interaction.response.send_message("⚠️ Hráč již není na serveru, byl odstraněn z fronty.", ephemeral=True)
 
-        await interaction.response.send_message(f"⚔️ Vytáhl jsi hráče {player.mention}. Nastavuji přístup do soukromé místnosti...", ephemeral=True)
-        overwrites = {
-            interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
-            player: discord.PermissionOverwrite(view_channel=True, send_messages=True, connect=True, speak=True),
-            interaction.user: discord.PermissionOverwrite(view_channel=True, send_messages=True, connect=True, speak=True)
-        }
-        category = interaction.channel.category
-        room = await interaction.guild.create_text_channel(name=f"test-{player.name}", category=category, overwrites=overwrites)
-        await room.send(f"🎮 Test začíná! Tester: {interaction.user.mention} vs Hráč: {player.mention}. Až skončíte, použijte `/result` v původní místnosti.")
+        # Zobrazíme výběr místnosti
+        view = RoomSelectView(self.kit_name, player)
+        await interaction.response.send_message(f"⚔️ Vybíráš místnost pro hráče {player.mention}. Zvol níže v menu:", view=view, ephemeral=True)
 
 def get_queue_embed(kit_name: str):
     data = QUEUES.get(kit_name, {"players": [], "testers": []})
@@ -409,12 +446,7 @@ async def result(interaction: discord.Interaction, discord_hrac: discord.Member,
     else:
         await interaction.channel.send(content=f"📢 **Nový výsledek pro {kit}!** | Hráč: {discord_hrac.mention} | Tester: {interaction.user.mention}", embed=embed)
     
-    if interaction.channel.name.startswith("test-"):
-        await interaction.response.send_message("✅ Výsledek byl odeslán a testovací místnost bude smazána.", ephemeral=True)
-        await asyncio.sleep(3)
-        await interaction.channel.delete()
-    else:
-        await interaction.response.send_message("✅ Výsledek byl úspěšně zaznamenán a odeslán!", ephemeral=True)
+    await interaction.response.send_message("✅ Výsledek byl úspěšně zaznamenán a odeslán!", ephemeral=True)
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 if __name__ == "__main__":
