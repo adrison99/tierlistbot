@@ -605,6 +605,14 @@ async def openqueue(interaction: discord.Interaction, kit: str):
     if not target_channel:
         return await interaction.response.send_message("❌ Kanál nebyl nalezen.", ephemeral=True)
 
+    # Vymazání všech předchozích zpráv od bota v kanálu (smaže staré zavřené/otevřené fronty)
+    try:
+        async for message in target_channel.history(limit=50):
+            if message.author == bot.user:
+                await message.delete()
+    except Exception as e:
+        print(f"Nelzemazat staré zprávy: {e}")
+
     QUEUES[kit.lower()] = {"players": [], "testers": []}
     embed = get_queue_embed(kit.lower(), interaction.guild.id)
     
@@ -661,6 +669,17 @@ async def joinqueueastester(interaction: discord.Interaction, kit: str):
 
     QUEUES[kit_key]["testers"].append(interaction.user.id)
     await interaction.response.send_message(get_msg(interaction.guild.id, "tester_joined", kit=kit), ephemeral=True)
+    
+    # Aktualizace zprávy, aby se hned ukázal tester
+    conn = sqlite3.connect("tierbot.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT channel_id FROM queue_rooms WHERE kit = ?", (kit_key,))
+    row = cursor.fetchone()
+    conn.close()
+    if row and row[0]:
+        ch = interaction.guild.get_channel(int(row[0]))
+        if ch:
+            await update_queue_message(ch, kit_key, interaction.guild.id)
 
 @bot.tree.command(name="leavequeueastester", description="Odebere tě ze seznamu testerů.")
 @discord.app_commands.autocomplete(kit=kit_autocomplete)
@@ -672,6 +691,16 @@ async def leavequeueastester(interaction: discord.Interaction, kit: str):
     if kit_key in QUEUES and interaction.user.id in QUEUES[kit_key]["testers"]:
         QUEUES[kit_key]["testers"].remove(interaction.user.id)
         await interaction.response.send_message(get_msg(interaction.guild.id, "tester_left", kit=kit), ephemeral=True)
+        
+        conn = sqlite3.connect("tierbot.db")
+        cursor = conn.cursor()
+        cursor.execute("SELECT channel_id FROM queue_rooms WHERE kit = ?", (kit_key,))
+        row = cursor.fetchone()
+        conn.close()
+        if row and row[0]:
+            ch = interaction.guild.get_channel(int(row[0]))
+            if ch:
+                await update_queue_message(ch, kit_key, interaction.guild.id)
     else:
         await interaction.response.send_message(get_msg(interaction.guild.id, "not_tester"), ephemeral=True)
 
