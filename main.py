@@ -283,7 +283,8 @@ async def database(interaction: discord.Interaction, kod: str):
     count = 0
 
     for item in items:
-        if ":" not in item: continue
+        if ":" not in item:
+            continue
         key, val = item.split(":", 1)
 
         if key == "lang":
@@ -421,6 +422,7 @@ class HTTicketKitSelect(discord.ui.Select):
         conn = sqlite3.connect("tierbot.db")
         cursor = conn.cursor()
         
+        # Kontrola HT cooldownu před vytvořením ticketu
         cursor.execute("SELECT cooldown_until FROM player_cooldowns WHERE discord_id = ? AND kit = ? AND type = 'ht'", (user_id, kit.lower()))
         cd_row = cursor.fetchone()
         if cd_row and cd_row[0]:
@@ -635,12 +637,37 @@ async def ft(interaction: discord.Interaction, kit: str, number: int):
     conn.close()
     await interaction.response.send_message(f"✅ FT pro kit **{kit}** nastaveno na {number}.", ephemeral=True)
 
-@bot.tree.command(name="passingscore", description="Nastaví passing score.")
+@bot.tree.command(name="passingscore", description="Zobrazí nebo nastaví passing score.")
 @discord.app_commands.autocomplete(kit=kit_autocomplete, tier=tier_autocomplete)
-async def passingscore(interaction: discord.Interaction, kit: str, tier: str):
-    if not await has_helper_perms(interaction):
-        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)
+async def passingscore(interaction: discord.Interaction, kit: str, tier: str = None):
+    conn = sqlite3.connect("tierbot.db")
+    cursor = conn.cursor()
     
+    if not tier:
+        cursor.execute("SELECT id, target_tier, opp_tier, count FROM passing_scores WHERE kit = ? ORDER BY target_tier", (kit.lower(),))
+        rows = cursor.fetchall()
+        conn.close()
+        if not rows:
+            return await interaction.response.send_message("✨ Žádná passing pravidla pro tento kit.", ephemeral=True)
+        
+        grouped = {}
+        for r_id, tt, ot, count in rows:
+            grouped.setdefault(tt, []).append(f"`{r_id}`. {count}x {ot}")
+            
+        desc_parts = []
+        for tt, items in grouped.items():
+            desc_parts.append(f"__**{tt}**__")
+            for item in items:
+                desc_parts.append(f"> {item}")
+                
+        embed = discord.Embed(title=f"📋 Passing Score pro kit: {kit.capitalize()}", description="\n".join(desc_parts), color=discord.Color.blue())
+        return await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    if not await has_helper_perms(interaction):
+        conn.close()
+        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)
+    conn.close()
+
     class PassModal(discord.ui.Modal, title=f"Passing Score: {kit.capitalize()} ({clean_tier(tier)})"):
         opp1_tier = discord.ui.TextInput(label="1. Soupeřův tier (např. HT3)", required=True)
         opp1_count = discord.ui.TextInput(label="Počet 1. soupeřů (např. 2)", required=True)
@@ -648,22 +675,22 @@ async def passingscore(interaction: discord.Interaction, kit: str, tier: str):
         opp2_count = discord.ui.TextInput(label="Počet 2. soupeřů (nepovinné)", required=False)
 
         async def on_submit(self, modal_interaction: discord.Interaction):
-            conn = sqlite3.connect("tierbot.db")
-            cursor = conn.cursor()
+            c = sqlite3.connect("tierbot.db")
+            cur = c.cursor()
             t_clean = clean_tier(tier)
             o1_clean = clean_tier(self.opp1_tier.value)
             try: c1 = int(self.opp1_count.value)
             except: c1 = 1
             
-            cursor.execute("INSERT INTO passing_scores (kit, target_tier, opp_tier, count) VALUES (?, ?, ?, ?)", (kit.lower(), t_clean, o1_clean, c1))
+            cur.execute("INSERT INTO passing_scores (kit, target_tier, opp_tier, count) VALUES (?, ?, ?, ?)", (kit.lower(), t_clean, o1_clean, c1))
             if self.opp2_tier.value and self.opp2_count.value:
                 o2_clean = clean_tier(self.opp2_tier.value)
                 try: c2 = int(self.opp2_count.value)
                 except: c2 = 1
-                cursor.execute("INSERT INTO passing_scores (kit, target_tier, opp_tier, count) VALUES (?, ?, ?, ?)", (kit.lower(), t_clean, o2_clean, c2))
-            conn.commit()
-            conn.close()
-            await modal_interaction.response.send_message("✅ Uloženo!", ephemeral=True)
+                cur.execute("INSERT INTO passing_scores (kit, target_tier, opp_tier, count) VALUES (?, ?, ?, ?)", (kit.lower(), t_clean, o2_clean, c2))
+            c.commit()
+            c.close()
+            await modal_interaction.response.send_message("✅ Passing score úspěšně nastaveno!", ephemeral=True)
 
     await interaction.response.send_modal(PassModal())
 
@@ -727,20 +754,73 @@ async def passingrule(interaction: discord.Interaction, kit: str, rule_id: int):
     conn.close()
     await interaction.response.send_message("🗑️ Smazáno.", ephemeral=True)
 
-@bot.tree.command(name="htresult", description="Vyhodnotí HT test.")
+@bot.tree.command(name="htresult", description="Vyhodnotí HT test, vyhodnotí skóre a udělí případný strike.")
 @discord.app_commands.autocomplete(tier=tier_autocomplete, kit=kit_autocomplete)
 async def htresult(interaction: discord.Interaction, discord_hrac: discord.Member, tier: str, status: str, kit: str, opponents: str):
     if not await has_helper_perms(interaction):
         return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)
     
-    tester_id = str(interaction.user.id)
-    ym = datetime.datetime.now().strftime("%Y-%m")
+    t_clean = clean_tier(tier)
     conn = sqlite3.connect("tierbot.db")
     cursor = conn.cursor()
+    
+    cursor.execute("SELECT strike_system, max_strikes, strike_room FROM server_settings WHERE guild_id = ?", (str(interaction.guild.id),))
+    s_row = cursor.fetchone()
+    strike_system_on = s_row and s_row[0] == "on"
+    max_s = s_row[1] if s_row and s_row[1] else 2
+    strike_room_id = s_row[2] if s_row else None
+
+    # Zpracování tester statistik (+1 test)
+    tester_id = str(interaction.user.id)
+    ym = datetime.datetime.now().strftime("%Y-%m")
     cursor.execute("INSERT INTO tester_monthly (discord_id, year_month, count) VALUES (?, ?, 1) ON CONFLICT(discord_id, year_month) DO UPDATE SET count = count + 1", (tester_id, ym))
     cursor.execute("INSERT INTO tester_overall (discord_id, count) VALUES (?, 1) ON CONFLICT(discord_id) DO UPDATE SET count = count + 1", (tester_id,))
+
+    # Pokud testovaný získává tier, aktualizujeme mu tier v databázi a přidáme roli
+    if status.lower() in ["získává", "ziskava"]:
+        cursor.execute("INSERT OR REPLACE INTO player_tiers (discord_id, kit, tier) VALUES (?, ?, ?)", (str(discord_hrac.id), kit.lower(), t_clean))
+        cursor.execute("SELECT role_id FROM tier_roles WHERE kit = ? AND tier = ?", (kit.lower(), t_clean))
+        role_row = cursor.fetchone()
+        if role_row and role_row[0]:
+            role = interaction.guild.get_role(int(role_row[0]))
+            if role:
+                try: await discord_hrac.add_roles(role)
+                except: pass
+
+    # Automatické vyhodnocení striků z argumentu opponents (např. "10-8 HT3, 4-10 HT3 @tester")
+    strike_count_change = 0
+    match_details_text = opponents
+
+    if strike_system_on and strike_room_id:
+        # Načteme pravidla strike_scores pro tento kit a tier
+        cursor.execute("SELECT opp_tier, score_str, is_unstrike FROM strike_scores WHERE kit = ? AND test_tier = ?", (kit.lower(), t_clean))
+        rules = cursor.fetchall()
+        
+        # Jednoduchá heuristika: Projdeme pravidla a zkusíme v zadaném textu opponents najít shodu se skóre
+        for opp_t, sc_str, is_unst in rules:
+            if sc_str in opponents.lower():
+                if is_unst == 1:
+                    strike_count_change = -1
+                else:
+                    strike_count_change = 1
+                break
+
+    current_strikes = 0
+    if strike_system_on and strike_room_id and strike_count_change != 0:
+        cursor.execute("SELECT count FROM strikes WHERE discord_id = ? AND kit = ?", (str(discord_hrac.id), kit.lower()))
+        st_row = cursor.fetchone()
+        current_strikes = max(0, (st_row[0] if st_row else 0) + strike_count_change)
+        cursor.execute("INSERT OR REPLACE INTO strikes (discord_id, kit, count) VALUES (?, ?, ?)", (str(discord_hrac.id), kit.lower(), current_strikes))
+
     conn.commit()
     conn.close()
+
+    # Odeslání do strike místnosti
+    if strike_system_on and strike_room_id and strike_count_change != 0:
+        s_channel = interaction.guild.get_channel(int(strike_room_id))
+        if s_channel:
+            action_text = f"dostává strike {current_strikes}/{max_s}" if strike_count_change > 0 else f"odebrán strike ({current_strikes}/{max_s})"
+            await s_channel.send(f"{discord_hrac.mention} {t_clean} {kit} {action_text} - {match_details_text}")
 
     await interaction.response.send_message("✅ HT Výsledek úspěšně zpracován!", ephemeral=True)
     await asyncio.sleep(3)
