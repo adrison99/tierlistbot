@@ -103,6 +103,23 @@ def get_msg(guild_id: int, key: str, **kwargs) -> str:
     msg = dict_to_use.get(key, TRANSLATIONS["cs"].get(key, ""))
     return msg.format(**kwargs)
 
+def parse_cooldown(cd_str: str):
+    days = 0
+    hours = 0
+    if not cd_str or cd_str == "0":
+        return 0, 0
+    cd_str = cd_str.strip().lower()
+    if cd_str.endswith("d"):
+        try: days = int(cd_str[:-1])
+        except: pass
+    elif cd_str.endswith("h"):
+        try: hours = int(cd_str[:-1])
+        except: pass
+    else:
+        try: days = int(cd_str)
+        except: pass
+    return days, hours
+
 def init_db():
     conn = sqlite3.connect("tierbot.db")
     cursor = conn.cursor()
@@ -133,6 +150,8 @@ def init_db():
             PRIMARY KEY (discord_id, kit, type)
         )
     """)
+    cursor.execute("CREATE TABLE IF NOT EXISTS tester_monthly (discord_id TEXT, year_month TEXT, count INTEGER, PRIMARY KEY (discord_id, year_month))")
+    cursor.execute("CREATE TABLE IF NOT EXISTS tester_overall (discord_id TEXT PRIMARY KEY, count INTEGER)")
     conn.commit()
     conn.close()
 
@@ -191,7 +210,7 @@ async def on_ready():
         print(f"❌ Chyba synchronizace: {e}")
 
 # --- DATABÁZE A KOMPLETNÍ ZÁLOHA/OBNOVA ---
-@bot.tree.command(name="databaseinfo", description="Vygeneruje textový kód pro zálohu nastavení a dat hráčů.")
+@bot.tree.command(name="databaseinfo", description="Vygeneruje textový kód pro zálohu nastavení, dat hráčů a statistik testerů.")
 async def databaseinfo(interaction: discord.Interaction):
     if not await has_helper_perms(interaction):
         return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)
@@ -226,6 +245,12 @@ async def databaseinfo(interaction: discord.Interaction):
 
     cursor.execute("SELECT discord_id, kit, type, cooldown_until FROM player_cooldowns")
     player_cooldowns = cursor.fetchall()
+
+    cursor.execute("SELECT discord_id, year_month, count FROM tester_monthly")
+    tester_monthly = cursor.fetchall()
+
+    cursor.execute("SELECT discord_id, count FROM tester_overall")
+    tester_overall = cursor.fetchall()
 
     conn.close()
 
@@ -263,17 +288,23 @@ async def databaseinfo(interaction: discord.Interaction):
     for d_id, kit, typ, until in player_cooldowns:
         lines.append(f"pcd:{d_id}|{kit}|{typ}|{until}")
 
+    for d_id, ym, count in tester_monthly:
+        lines.append(f"tmon:{d_id}|{ym}|{count}")
+
+    for d_id, count in tester_overall:
+        lines.append(f"tot:{d_id}|{count}")
+
     backup_text = ";;".join(lines)
     if not backup_text:
         return await interaction.response.send_message("⚠️ V databázi nejsou uložena žádná data k zálohování.", ephemeral=True)
 
     try:
         await interaction.user.send(f"📋 **Záloha databáze (zasetí do /database):**\n```text\n{backup_text}\n```")
-        await interaction.response.send_message("✅ Kompletní záloha databáze (včetně hráčů) ti byla odeslána do soukromých zpráv (DM).", ephemeral=True)
+        await interaction.response.send_message("✅ Kompletní záloha databáze ti byla odeslána do soukromých zpráv (DM).", ephemeral=True)
     except:
         await interaction.response.send_message(f"📋 **Záloha:**\n```text\n{backup_text}\n```", ephemeral=True)
 
-@bot.tree.command(name="database", description="Hromadně obnoví nastavení a data hráčů ze záložního kódu.")
+@bot.tree.command(name="database", description="Hromadně obnoví nastavení a data ze záložního kódu.")
 async def database(interaction: discord.Interaction, kod: str):
     if not await has_helper_perms(interaction):
         return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)
@@ -346,11 +377,21 @@ async def database(interaction: discord.Interaction, kod: str):
             if len(parts) == 4:
                 cursor.execute("INSERT OR REPLACE INTO player_cooldowns (discord_id, kit, type, cooldown_until) VALUES (?, ?, ?, ?)", (parts[0], parts[1].lower(), parts[2], parts[3]))
                 count += 1
+        elif key == "tmon":
+            parts = val.split("|")
+            if len(parts) == 3:
+                cursor.execute("INSERT OR REPLACE INTO tester_monthly (discord_id, year_month, count) VALUES (?, ?, ?)", (parts[0], parts[1], int(parts[2])))
+                count += 1
+        elif key == "tot":
+            parts = val.split("|")
+            if len(parts) == 2:
+                cursor.execute("INSERT OR REPLACE INTO tester_overall (discord_id, count) VALUES (?, ?)", (parts[0], int(parts[1])))
+                count += 1
 
     conn.commit()
     conn.close()
 
-    await interaction.response.send_message(f"✅ Úspěšně obnoveno/nastaveno **{count}** položek z databázového kódu (včetně hráčů)!", ephemeral=True)
+    await interaction.response.send_message(f"✅ Úspěšně obnoveno/nastaveno **{count}** položek z databázového kódu!", ephemeral=True)
 
 # --- HT TICKET SYSTÉM ---
 @bot.tree.command(name="hticketset", description="Nastaví místnost pro výběr HT ticketů.")
@@ -420,7 +461,6 @@ class HTTicketKitSelect(discord.ui.Select):
         elif "HT1" in ct: next_tier = "HT1"
 
         channel_name = f"{mc_ign.lower()}-{next_tier.lower()}-{kit.lower()}"
-        
         target_category = interaction.guild.get_channel(int(cat_row[0])) if cat_row and cat_row[0] else interaction.channel.category
 
         overwrites = {
@@ -499,32 +539,23 @@ class CloseTicketView(discord.ui.View):
         cursor = conn.cursor()
         cursor.execute("SELECT cooldown_ht FROM server_settings WHERE guild_id = ?", (str(interaction.guild.id),))
         s_row = cursor.fetchone()
-        conn.close()
 
         parts = interaction.channel.name.split("-")
         if len(parts) >= 3:
             ign = parts[0]
             kit = parts[-1]
-            conn = sqlite3.connect("tierbot.db")
-            cursor = conn.cursor()
             cursor.execute("SELECT discord_id FROM verified WHERE minecraft_ign = ?", (ign,))
             u_row = cursor.fetchone()
             if u_row:
                 discord_id = u_row[0]
                 cd_setting = s_row[0] if s_row and s_row[0] else "0"
-                delta_days, delta_hours = 0, 0
-                if cd_setting.endswith("d"):
-                    try: delta_days = int(cd_setting[:-1])
-                    except: pass
-                elif cd_setting.endswith("h"):
-                    try: delta_hours = int(cd_setting[:-1])
-                    except: pass
+                days, hours = parse_cooldown(cd_setting)
                 
-                if delta_days > 0 or delta_hours > 0:
-                    expiry = datetime.datetime.now() + datetime.timedelta(days=delta_days, hours=delta_hours)
+                if days > 0 or hours > 0:
+                    expiry = datetime.datetime.now() + datetime.timedelta(days=days, hours=hours)
                     cursor.execute("INSERT OR REPLACE INTO player_cooldowns (discord_id, kit, type, cooldown_until) VALUES (?, ?, ?, ?)", (discord_id, kit.lower(), "ht", expiry.isoformat()))
                     conn.commit()
-            conn.close()
+        conn.close()
 
         await interaction.response.send_message("🔒 Ticket bude za chvíli smazán...", ephemeral=True)
         await asyncio.sleep(3)
@@ -542,32 +573,23 @@ async def close(interaction: discord.Interaction):
     cursor = conn.cursor()
     cursor.execute("SELECT cooldown_ht FROM server_settings WHERE guild_id = ?", (str(interaction.guild.id),))
     s_row = cursor.fetchone()
-    conn.close()
 
     parts = interaction.channel.name.split("-")
     if len(parts) >= 3:
         ign = parts[0]
         kit = parts[-1]
-        conn = sqlite3.connect("tierbot.db")
-        cursor = conn.cursor()
         cursor.execute("SELECT discord_id FROM verified WHERE minecraft_ign = ?", (ign,))
         u_row = cursor.fetchone()
         if u_row:
             discord_id = u_row[0]
             cd_setting = s_row[0] if s_row and s_row[0] else "0"
-            delta_days, delta_hours = 0, 0
-            if cd_setting.endswith("d"):
-                try: delta_days = int(cd_setting[:-1])
-                except: pass
-            elif cd_setting.endswith("h"):
-                try: delta_hours = int(cd_setting[:-1])
-                except: pass
+            days, hours = parse_cooldown(cd_setting)
             
-            if delta_days > 0 or delta_hours > 0:
-                expiry = datetime.datetime.now() + datetime.timedelta(days=delta_days, hours=delta_hours)
+            if days > 0 or hours > 0:
+                expiry = datetime.datetime.now() + datetime.timedelta(days=days, hours=hours)
                 cursor.execute("INSERT OR REPLACE INTO player_cooldowns (discord_id, kit, type, cooldown_until) VALUES (?, ?, ?, ?)", (discord_id, kit.lower(), "ht", expiry.isoformat()))
                 conn.commit()
-        conn.close()
+    conn.close()
 
     await interaction.response.send_message("🔒 Ticket bude za chvíli smazán...", ephemeral=True)
     await asyncio.sleep(3)
@@ -594,9 +616,52 @@ async def remove(interaction: discord.Interaction, user: discord.Member):
     
     try:
         await interaction.channel.set_permissions(user, overwrite=None)
-        await interaction.response.send_message(f"✅ Uživatelu {user.mention} byl odebrán přístup z ticketu.", ephemeral=False)
+        await interaction.response.send_message(f"✅ Uživateli {user.mention} byl odebrán přístup z ticketu.", ephemeral=False)
     except Exception as e:
         await interaction.response.send_message(f"❌ Nepodařilo se odebrat uživatele: {e}", ephemeral=True)
+
+# --- TESTER LEADERBOARD ---
+@bot.tree.command(name="testerleaderboard", description="Zobrazí žebříček testerů.")
+@discord.app_commands.choices(obdobi=[
+    discord.app_commands.Choice(name="Tento měsíc", value="tentomesic"),
+    discord.app_commands.Choice(name="Minulý měsíc", value="minulymesic"),
+    discord.app_commands.Choice(name="Celkově", value="celkove")
+])
+async def testerleaderboard(interaction: discord.Interaction, obdobi: str):
+    conn = sqlite3.connect("tierbot.db")
+    cursor = conn.cursor()
+    
+    now = datetime.datetime.now()
+    if obdobi == "tentomesic":
+        target_month = now.strftime("%Y-%m")
+        title = "🏆 TOP testeři tento měsíc"
+        cursor.execute("SELECT discord_id, count FROM tester_monthly WHERE year_month = ? ORDER BY count DESC LIMIT 10", (target_month,))
+    elif obdobi == "minulymesic":
+        first_day = now.replace(day=1)
+        last_month_dt = first_day - datetime.timedelta(days=1)
+        target_month = last_month_dt.strftime("%Y-%m")
+        title = "🏆 TOP testeři minulý měsíc"
+        cursor.execute("SELECT discord_id, count FROM tester_monthly WHERE year_month = ? ORDER BY count DESC LIMIT 10", (target_month,))
+    else:
+        title = "🏆 TOP testeři celkově"
+        cursor.execute("SELECT discord_id, count FROM tester_overall ORDER BY count DESC LIMIT 10")
+        
+    rows = cursor.fetchall()
+    conn.close()
+    
+    if not rows:
+        return await interaction.response.send_message("✨ Žádné záznamy v leaderboardu.", ephemeral=True)
+        
+    desc_lines = []
+    for i, (d_id, count) in enumerate(rows, 1):
+        desc_lines.append(f"{i}. <@{d_id}>: {count} testů")
+        
+    embed = discord.Embed(
+        title=title,
+        description="\n".join(desc_lines),
+        color=discord.Color.gold()
+    )
+    await interaction.response.send_message(embed=embed, ephemeral=True)
 
 # --- OSTATNÍ PŘÍKAZY ---
 @bot.tree.command(name="language", description="Změní jazyk bota pro tento server.")
@@ -654,18 +719,44 @@ async def cooldown(interaction: discord.Interaction, player: discord.Member):
     cursor.execute("SELECT kit, type, cooldown_until FROM player_cooldowns WHERE discord_id = ?", (str(player.id),))
     rows = cursor.fetchall()
     conn.close()
+    
     if not rows:
         return await interaction.response.send_message(f"✨ Uživatel {player.mention} nemá žádné aktivní cooldowny.", ephemeral=True)
-    embed = discord.Embed(title=f"⏳ Cooldowny pro hráče {player.display_name}", color=discord.Color.orange())
+        
+    lt_lines = []
+    ht_lines = []
+    now = datetime.datetime.now()
+    
     for kit, typ, until_str in rows:
         try:
             dt = datetime.datetime.fromisoformat(until_str)
-            if datetime.datetime.now() < dt:
-                embed.add_field(name=f"Kit: {kit.capitalize()} ({typ.upper()})", value=f"Do: {dt.strftime('%d.%m.%Y %H:%M')}", inline=False)
+            if now < dt:
+                time_left = dt.strftime('%d.%m.%Y %H:%M')
+                line = f"**{kit.capitalize()}:** {time_left}"
+                if typ.lower() == "lt":
+                    lt_lines.append(line)
+                else:
+                    ht_lines.append(line)
         except:
             pass
-    if not embed.fields:
+            
+    desc_parts = []
+    if lt_lines:
+        desc_parts.append("__**LT Cooldowny**__")
+        desc_parts.extend(lt_lines)
+    if ht_lines:
+        if desc_parts: desc_parts.append("")
+        desc_parts.append("__**HT Cooldowny**__")
+        desc_parts.extend(ht_lines)
+        
+    if not desc_parts:
         return await interaction.response.send_message(f"✨ Uživatel {player.mention} nemá žádné aktivní cooldowny.", ephemeral=True)
+        
+    embed = discord.Embed(
+        title=f"⏳ Cooldowny pro hráče {player.display_name}",
+        description="\n".join(desc_parts),
+        color=discord.Color.orange()
+    )
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
 @bot.tree.command(name="verify", description="Propojí tvůj Discord účet s Minecraft IGN.")
@@ -1023,19 +1114,18 @@ async def result(interaction: discord.Interaction, discord_hrac: discord.Member,
     is_lt = tier.startswith("LT") or tier.startswith("RLT")
     cd_setting = (settings_row[1] if is_lt else settings_row[2]) if settings_row else "0"
 
-    delta_days = 0
-    delta_hours = 0
-    if cd_setting.endswith("d"):
-        try: delta_days = int(cd_setting[:-1])
-        except: pass
-    elif cd_setting.endswith("h"):
-        try: delta_hours = int(cd_setting[:-1])
-        except: pass
+    days, hours = parse_cooldown(cd_setting)
 
-    if delta_days > 0 or delta_hours > 0:
-        expiry = datetime.datetime.now() + datetime.timedelta(days=delta_days, hours=delta_hours)
+    if days > 0 or hours > 0:
+        expiry = datetime.datetime.now() + datetime.timedelta(days=days, hours=hours)
         cd_type = "lt" if is_lt else "ht"
         cursor.execute("INSERT OR REPLACE INTO player_cooldowns (discord_id, kit, type, cooldown_until) VALUES (?, ?, ?, ?)", (str(discord_hrac.id), kit.lower(), cd_type, expiry.isoformat()))
+
+    # Aktualizace statistik testera (+1 test)
+    tester_id = str(interaction.user.id)
+    current_month = datetime.datetime.now().strftime("%Y-%m")
+    cursor.execute("INSERT INTO tester_monthly (discord_id, year_month, count) VALUES (?, ?, 1) ON CONFLICT(discord_id, year_month) DO UPDATE SET count = count + 1", (tester_id, current_month))
+    cursor.execute("INSERT INTO tester_overall (discord_id, count) VALUES (?, 1) ON CONFLICT(discord_id) DO UPDATE SET count = count + 1", (tester_id,))
 
     conn.commit()
     conn.close()
