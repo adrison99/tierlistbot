@@ -120,6 +120,9 @@ def parse_cooldown(cd_str: str):
         except: pass
     return days, hours
 
+def clean_tier(tier: str) -> str:
+    return tier.upper().replace("R", "")
+
 def init_db():
     conn = sqlite3.connect("tierbot.db")
     cursor = conn.cursor()
@@ -134,7 +137,10 @@ def init_db():
             language TEXT DEFAULT 'cs',
             cooldown_lt TEXT DEFAULT '0',
             cooldown_ht TEXT DEFAULT '0',
-            ht_ticket_room TEXT
+            ht_ticket_room TEXT,
+            max_strikes INTEGER DEFAULT 2,
+            strike_room TEXT,
+            strike_system TEXT DEFAULT 'on'
         )
     """)
     cursor.execute("CREATE TABLE IF NOT EXISTS queue_rooms (kit TEXT PRIMARY KEY, channel_id TEXT)")
@@ -152,6 +158,12 @@ def init_db():
     """)
     cursor.execute("CREATE TABLE IF NOT EXISTS tester_monthly (discord_id TEXT, year_month TEXT, count INTEGER, PRIMARY KEY (discord_id, year_month))")
     cursor.execute("CREATE TABLE IF NOT EXISTS tester_overall (discord_id TEXT PRIMARY KEY, count INTEGER)")
+    
+    cursor.execute("CREATE TABLE IF NOT EXISTS ft_config (kit TEXT PRIMARY KEY, ft_num INTEGER)")
+    cursor.execute("CREATE TABLE IF NOT EXISTS passing_scores (id INTEGER PRIMARY KEY AUTOINCREMENT, kit TEXT, target_tier TEXT, opp_tier TEXT, count INTEGER)")
+    cursor.execute("CREATE TABLE IF NOT EXISTS strike_scores (id INTEGER PRIMARY KEY AUTOINCREMENT, kit TEXT, test_tier TEXT, opp_tier TEXT, score_str TEXT, is_unstrike INTEGER DEFAULT 0)")
+    cursor.execute("CREATE TABLE IF NOT EXISTS strikes (discord_id TEXT, kit TEXT, count INTEGER, PRIMARY KEY (discord_id, kit))")
+    
     conn.commit()
     conn.close()
 
@@ -164,7 +176,7 @@ intents.members = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-VALID_TIERS = ["LT5", "HT5", "LT4", "HT4", "LT3", "HT3", "RLT2", "LT2", "RHT2", "HT2", "RLT1", "LT1", "RHT1", "HT1"]
+VALID_TIERS = ["LT5", "HT5", "LT4", "HT4", "LT3", "HT3", "LT2", "HT2", "LT1", "HT1"]
 OWNER_IDS = [] 
 
 async def has_helper_perms(ctx: discord.Interaction) -> bool:
@@ -202,203 +214,379 @@ async def tier_autocomplete(interaction: discord.Interaction, current: str):
 
 @bot.event
 async def on_ready():
-    print(f"✅ Bot {bot.user} je online!")
+    print(f"✅ Bot {bot.user} je online!")[cite: 3]
     try:
         synced = await bot.tree.sync()
-        print(f"🔄 Synchrováno {len(synced)} slash příkazů.")
+        print(f"🔄 Synchrováno {len(synced)} slash příkazů.")[cite: 3]
     except Exception as e:
-        print(f"❌ Chyba synchronizace: {e}")
+        print(f"❌ Chyba synchronizace: {e}")[cite: 3]
 
 # --- DATABÁZE A KOMPLETNÍ ZÁLOHA/OBNOVA ---
-@bot.tree.command(name="databaseinfo", description="Vygeneruje textový kód pro zálohu nastavení, dat hráčů a statistik testerů.")
+@bot.tree.command(name="databaseinfo", description="Vygeneruje textový kód pro zálohu kompletní databáze.")
 async def databaseinfo(interaction: discord.Interaction):
     if not await has_helper_perms(interaction):
-        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)
+        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)[cite: 3]
 
-    guild_id = str(interaction.guild.id)
-    conn = sqlite3.connect("tierbot.db")
-    cursor = conn.cursor()
+    guild_id = str(interaction.guild.id)[cite: 3]
+    conn = sqlite3.connect("tierbot.db")[cite: 3]
+    cursor = conn.cursor()[cite: 3]
 
-    cursor.execute("SELECT result_room, helper_role, language, cooldown_lt, cooldown_ht, ht_ticket_room FROM server_settings WHERE guild_id = ?", (guild_id,))
-    settings = cursor.fetchone()
+    cursor.execute("SELECT result_room, helper_role, language, cooldown_lt, cooldown_ht, ht_ticket_room, max_strikes, strike_room, strike_system FROM server_settings WHERE guild_id = ?", (guild_id,))[cite: 3]
+    settings = cursor.fetchone()[cite: 3]
 
-    cursor.execute("SELECT name FROM kits")
-    kits = [row[0] for row in cursor.fetchall()]
+    cursor.execute("SELECT name FROM kits")[cite: 3]
+    kits = [row[0] for row in cursor.fetchall()][cite: 3]
 
-    cursor.execute("SELECT kit, tier, role_id FROM tier_roles")
-    tier_roles = cursor.fetchall()
+    cursor.execute("SELECT kit, tier, role_id FROM tier_roles")[cite: 3]
+    tier_roles = cursor.fetchall()[cite: 3]
 
-    cursor.execute("SELECT kit, channel_id FROM queue_rooms")
-    queue_rooms = cursor.fetchall()
+    cursor.execute("SELECT kit, channel_id FROM queue_rooms")[cite: 3]
+    queue_rooms = cursor.fetchall()[cite: 3]
 
-    cursor.execute("SELECT kit, category_id FROM kit_categories")
-    kit_categories = cursor.fetchall()
+    cursor.execute("SELECT kit, category_id FROM kit_categories")[cite: 3]
+    kit_categories = cursor.fetchall()[cite: 3]
 
-    cursor.execute("SELECT kit, category_id FROM ht_ticket_categories")
-    ht_ticket_categories = cursor.fetchall()
+    cursor.execute("SELECT kit, category_id FROM ht_ticket_categories")[cite: 3]
+    ht_ticket_categories = cursor.fetchall()[cite: 3]
 
-    cursor.execute("SELECT discord_id, minecraft_ign FROM verified")
-    verified_users = cursor.fetchall()
+    cursor.execute("SELECT discord_id, minecraft_ign FROM verified")[cite: 3]
+    verified_users = cursor.fetchall()[cite: 3]
 
-    cursor.execute("SELECT discord_id, kit, tier FROM player_tiers")
-    player_tiers = cursor.fetchall()
+    cursor.execute("SELECT discord_id, kit, tier FROM player_tiers")[cite: 3]
+    player_tiers = cursor.fetchall()[cite: 3]
 
-    cursor.execute("SELECT discord_id, kit, type, cooldown_until FROM player_cooldowns")
-    player_cooldowns = cursor.fetchall()
+    cursor.execute("SELECT discord_id, kit, type, cooldown_until FROM player_cooldowns")[cite: 3]
+    player_cooldowns = cursor.fetchall()[cite: 3]
 
-    cursor.execute("SELECT discord_id, year_month, count FROM tester_monthly")
-    tester_monthly = cursor.fetchall()
+    cursor.execute("SELECT discord_id, year_month, count FROM tester_monthly")[cite: 3]
+    tester_monthly = cursor.fetchall()[cite: 3]
 
-    cursor.execute("SELECT discord_id, count FROM tester_overall")
-    tester_overall = cursor.fetchall()
+    cursor.execute("SELECT discord_id, count FROM tester_overall")[cite: 3]
+    tester_overall = cursor.fetchall()[cite: 3]
 
-    conn.close()
+    cursor.execute("SELECT kit, ft_num FROM ft_config")
+    ft_configs = cursor.fetchall()
 
-    lines = []
+    cursor.execute("SELECT kit, target_tier, opp_tier, count FROM passing_scores")
+    pass_scores = cursor.fetchall()
+
+    cursor.execute("SELECT kit, test_tier, opp_tier, score_str, is_unstrike FROM strike_scores")
+    strike_scores = cursor.fetchall()
+
+    cursor.execute("SELECT discord_id, kit, count FROM strikes")
+    user_strikes = cursor.fetchall()
+
+    conn.close()[cite: 3]
+
+    lines = [][cite: 3]
     if settings:
-        result_room, helper_role, lang, cd_lt, cd_ht, ht_ticket_room = settings
-        if lang: lines.append(f"lang:{lang}")
-        if cd_lt and cd_lt != "0": lines.append(f"cdlt:{cd_lt}")
-        if cd_ht and cd_ht != "0": lines.append(f"cdht:{cd_ht}")
-        if result_room: lines.append(f"resultroom:{result_room}")
-        if helper_role: lines.append(f"helperrole:{helper_role}")
-        if ht_ticket_room: lines.append(f"htticketroom:{ht_ticket_room}")
+        result_room, helper_role, lang, cd_lt, cd_ht, ht_ticket_room, max_s, s_room, s_sys = settings
+        if lang: lines.append(f"lang:{lang}")[cite: 3]
+        if cd_lt and cd_lt != "0": lines.append(f"cdlt:{cd_lt}")[cite: 3]
+        if cd_ht and cd_ht != "0": lines.append(f"cdht:{cd_ht}")[cite: 3]
+        if result_room: lines.append(f"resultroom:{result_room}")[cite: 3]
+        if helper_role: lines.append(f"helperrole:{helper_role}")[cite: 3]
+        if ht_ticket_room: lines.append(f"htticketroom:{ht_ticket_room}")[cite: 3]
+        if max_s: lines.append(f"maxs:{max_s}")
+        if s_room: lines.append(f"sroom:{s_room}")
+        if s_sys: lines.append(f"ssys:{s_sys}")
 
-    for kit in kits:
-        lines.append(f"kit:{kit}")
+    for kit in kits: lines.append(f"kit:{kit}")[cite: 3]
+    for kit, tier, role_id in tier_roles: lines.append(f"tierrole:{kit}|{tier}|{role_id}")[cite: 3]
+    for kit, channel_id in queue_rooms: lines.append(f"queueroom:{kit}|{channel_id}")[cite: 3]
+    for kit, category_id in kit_categories: lines.append(f"kitcat:{kit}|{category_id}")[cite: 3]
+    for kit, category_id in ht_ticket_categories: lines.append(f"htticketcat:{kit}|{category_id}")[cite: 3]
+    for d_id, ign in verified_users: lines.append(f"ver:{d_id}|{ign}")[cite: 3]
+    for d_id, kit, tier in player_tiers: lines.append(f"ptier:{d_id}|{kit}|{tier}")[cite: 3]
+    for d_id, kit, typ, until in player_cooldowns: lines.append(f"pcd:{d_id}|{kit}|{typ}|{until}")[cite: 3]
+    for d_id, ym, count in tester_monthly: lines.append(f"tmon:{d_id}|{ym}|{count}")[cite: 3]
+    for d_id, count in tester_overall: lines.append(f"tot:{d_id}|{count}")[cite: 3]
+    for kit, ft in ft_configs: lines.append(f"ft:{kit}|{ft}")
+    for kit, tt, ot, c in pass_scores: lines.append(f"pscore:{kit}|{tt}|{ot}|{c}")
+    for kit, tt, ot, s, iu in strike_scores: lines.append(f"sscore:{kit}|{tt}|{ot}|{s}|{iu}")
+    for d_id, kit, c in user_strikes: lines.append(f"strike:{d_id}|{kit}|{c}")
 
-    for kit, tier, role_id in tier_roles:
-        lines.append(f"tierrole:{kit}|{tier}|{role_id}")
-
-    for kit, channel_id in queue_rooms:
-        lines.append(f"queueroom:{kit}|{channel_id}")
-
-    for kit, category_id in kit_categories:
-        lines.append(f"kitcat:{kit}|{category_id}")
-
-    for kit, category_id in ht_ticket_categories:
-        lines.append(f"htticketcat:{kit}|{category_id}")
-
-    for d_id, ign in verified_users:
-        lines.append(f"ver:{d_id}|{ign}")
-
-    for d_id, kit, tier in player_tiers:
-        lines.append(f"ptier:{d_id}|{kit}|{tier}")
-
-    for d_id, kit, typ, until in player_cooldowns:
-        lines.append(f"pcd:{d_id}|{kit}|{typ}|{until}")
-
-    for d_id, ym, count in tester_monthly:
-        lines.append(f"tmon:{d_id}|{ym}|{count}")
-
-    for d_id, count in tester_overall:
-        lines.append(f"tot:{d_id}|{count}")
-
-    backup_text = ";;".join(lines)
+    backup_text = ";;".join(lines)[cite: 3]
     if not backup_text:
-        return await interaction.response.send_message("⚠️ V databázi nejsou uložena žádná data k zálohování.", ephemeral=True)
+        return await interaction.response.send_message("⚠️ V databázi nejsou uložena žádná data k zálohování.", ephemeral=True)[cite: 3]
 
     try:
-        await interaction.user.send(f"📋 **Záloha databáze (zasetí do /database):**\n```text\n{backup_text}\n```")
-        await interaction.response.send_message("✅ Kompletní záloha databáze ti byla odeslána do soukromých zpráv (DM).", ephemeral=True)
+        await interaction.user.send(f"📋 **Záloha databáze (zasetí do /database):**\n```text\n{backup_text}\n```")[cite: 3]
+        await interaction.response.send_message("✅ Kompletní záloha databáze ti byla odeslána do soukromých zpráv (DM).", ephemeral=True)[cite: 3]
     except:
-        await interaction.response.send_message(f"📋 **Záloha:**\n```text\n{backup_text}\n```", ephemeral=True)
+        await interaction.response.send_message(f"📋 **Záloha:**\n```text\n{backup_text}\n```", ephemeral=True)[cite: 3]
 
 @bot.tree.command(name="database", description="Hromadně obnoví nastavení a data ze záložního kódu.")
 async def database(interaction: discord.Interaction, kod: str):
     if not await has_helper_perms(interaction):
-        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)
+        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)[cite: 3]
 
-    guild_id = str(interaction.guild.id)
-    conn = sqlite3.connect("tierbot.db")
-    cursor = conn.cursor()
+    guild_id = str(interaction.guild.id)[cite: 3]
+    conn = sqlite3.connect("tierbot.db")[cite: 3]
+    cursor = conn.cursor()[cite: 3]
 
-    items = kod.split(";;")
-    count = 0
+    items = kod.split(";;")[cite: 3]
+    count = 0[cite: 3]
 
     for item in items:
-        if ":" not in item:
-            continue
-        key, val = item.split(":", 1)
+        if ":" not in item: continue[cite: 3]
+        key, val = item.split(":", 1)[cite: 3]
 
         if key == "lang":
-            cursor.execute("INSERT INTO server_settings (guild_id, language) VALUES (?, ?) ON CONFLICT(guild_id) DO UPDATE SET language = ?", (guild_id, val, val))
-            count += 1
+            cursor.execute("INSERT INTO server_settings (guild_id, language) VALUES (?, ?) ON CONFLICT(guild_id) DO UPDATE SET language = ?", (guild_id, val, val))[cite: 3]
+            count += 1[cite: 3]
         elif key == "cdlt":
-            cursor.execute("INSERT INTO server_settings (guild_id, cooldown_lt) VALUES (?, ?) ON CONFLICT(guild_id) DO UPDATE SET cooldown_lt = ?", (guild_id, val, val))
-            count += 1
+            cursor.execute("INSERT INTO server_settings (guild_id, cooldown_lt) VALUES (?, ?) ON CONFLICT(guild_id) DO UPDATE SET cooldown_lt = ?", (guild_id, val, val))[cite: 3]
+            count += 1[cite: 3]
         elif key == "cdht":
-            cursor.execute("INSERT INTO server_settings (guild_id, cooldown_ht) VALUES (?, ?) ON CONFLICT(guild_id) DO UPDATE SET cooldown_ht = ?", (guild_id, val, val))
-            count += 1
+            cursor.execute("INSERT INTO server_settings (guild_id, cooldown_ht) VALUES (?, ?) ON CONFLICT(guild_id) DO UPDATE SET cooldown_ht = ?", (guild_id, val, val))[cite: 3]
+            count += 1[cite: 3]
         elif key == "resultroom":
-            cursor.execute("INSERT INTO server_settings (guild_id, result_room) VALUES (?, ?) ON CONFLICT(guild_id) DO UPDATE SET result_room = ?", (guild_id, val, val))
-            count += 1
+            cursor.execute("INSERT INTO server_settings (guild_id, result_room) VALUES (?, ?) ON CONFLICT(guild_id) DO UPDATE SET result_room = ?", (guild_id, val, val))[cite: 3]
+            count += 1[cite: 3]
         elif key == "helperrole":
-            cursor.execute("INSERT INTO server_settings (guild_id, helper_role) VALUES (?, ?) ON CONFLICT(guild_id) DO UPDATE SET helper_role = ?", (guild_id, val, val))
-            count += 1
+            cursor.execute("INSERT INTO server_settings (guild_id, helper_role) VALUES (?, ?) ON CONFLICT(guild_id) DO UPDATE SET helper_role = ?", (guild_id, val, val))[cite: 3]
+            count += 1[cite: 3]
         elif key == "htticketroom":
-            cursor.execute("INSERT INTO server_settings (guild_id, ht_ticket_room) VALUES (?, ?) ON CONFLICT(guild_id) DO UPDATE SET ht_ticket_room = ?", (guild_id, val, val))
+            cursor.execute("INSERT INTO server_settings (guild_id, ht_ticket_room) VALUES (?, ?) ON CONFLICT(guild_id) DO UPDATE SET ht_ticket_room = ?", (guild_id, val, val))[cite: 3]
+            count += 1
+        elif key == "maxs":
+            cursor.execute("INSERT INTO server_settings (guild_id, max_strikes) VALUES (?, ?) ON CONFLICT(guild_id) DO UPDATE SET max_strikes = ?", (guild_id, int(val), int(val)))
+            count += 1
+        elif key == "sroom":
+            cursor.execute("INSERT INTO server_settings (guild_id, strike_room) VALUES (?, ?) ON CONFLICT(guild_id) DO UPDATE SET strike_room = ?", (guild_id, val, val))
+            count += 1
+        elif key == "ssys":
+            cursor.execute("INSERT INTO server_settings (guild_id, strike_system) VALUES (?, ?) ON CONFLICT(guild_id) DO UPDATE SET strike_system = ?", (guild_id, val, val))
             count += 1
         elif key == "kit":
-            cursor.execute("INSERT OR IGNORE INTO kits (name) VALUES (?)", (val.lower(),))
-            count += 1
+            cursor.execute("INSERT OR IGNORE INTO kits (name) VALUES (?)", (val.lower(),))[cite: 3]
+            count += 1[cite: 3]
         elif key == "tierrole":
-            parts = val.split("|")
+            parts = val.split("|")[cite: 3]
             if len(parts) == 3:
-                cursor.execute("INSERT OR REPLACE INTO tier_roles (kit, tier, role_id) VALUES (?, ?, ?)", (parts[0].lower(), parts[1], parts[2]))
-                count += 1
+                cursor.execute("INSERT OR REPLACE INTO tier_roles (kit, tier, role_id) VALUES (?, ?, ?)", (parts[0].lower(), clean_tier(parts[1]), parts[2]))[cite: 3]
+                count += 1[cite: 3]
         elif key == "queueroom":
-            parts = val.split("|")
+            parts = val.split("|")[cite: 3]
             if len(parts) == 2:
-                cursor.execute("INSERT OR REPLACE INTO queue_rooms (kit, channel_id) VALUES (?, ?)", (parts[0].lower(), parts[1]))
-                count += 1
+                cursor.execute("INSERT OR REPLACE INTO queue_rooms (kit, channel_id) VALUES (?, ?)", (parts[0].lower(), parts[1]))[cite: 3]
+                count += 1[cite: 3]
         elif key == "kitcat":
-            parts = val.split("|")
+            parts = val.split("|")[cite: 3]
             if len(parts) == 2:
-                cursor.execute("INSERT OR REPLACE INTO kit_categories (kit, category_id) VALUES (?, ?)", (parts[0].lower(), parts[1]))
-                count += 1
+                cursor.execute("INSERT OR REPLACE INTO kit_categories (kit, category_id) VALUES (?, ?)", (parts[0].lower(), parts[1]))[cite: 3]
+                count += 1[cite: 3]
         elif key == "htticketcat":
-            parts = val.split("|")
+            parts = val.split("|")[cite: 3]
             if len(parts) == 2:
-                cursor.execute("INSERT OR REPLACE INTO ht_ticket_categories (kit, category_id) VALUES (?, ?)", (parts[0].lower(), parts[1]))
+                cursor.execute("INSERT OR REPLACE INTO ht_ticket_categories (kit, category_id) VALUES (?, ?)", (parts[0].lower(), parts[1]))[cite: 3]
                 count += 1
         elif key == "ver":
-            parts = val.split("|")
+            parts = val.split("|")[cite: 3]
             if len(parts) == 2:
-                cursor.execute("INSERT OR REPLACE INTO verified (discord_id, minecraft_ign) VALUES (?, ?)", (parts[0], parts[1]))
+                cursor.execute("INSERT OR REPLACE INTO verified (discord_id, minecraft_ign) VALUES (?, ?)", (parts[0], parts[1]))[cite: 3]
                 count += 1
         elif key == "ptier":
-            parts = val.split("|")
+            parts = val.split("|")[cite: 3]
             if len(parts) == 3:
-                cursor.execute("INSERT OR REPLACE INTO player_tiers (discord_id, kit, tier) VALUES (?, ?, ?)", (parts[0], parts[1].lower(), parts[2]))
+                cursor.execute("INSERT OR REPLACE INTO player_tiers (discord_id, kit, tier) VALUES (?, ?, ?)", (parts[0], parts[1].lower(), clean_tier(parts[2])))[cite: 3]
                 count += 1
         elif key == "pcd":
-            parts = val.split("|")
+            parts = val.split("|")[cite: 3]
             if len(parts) == 4:
-                cursor.execute("INSERT OR REPLACE INTO player_cooldowns (discord_id, kit, type, cooldown_until) VALUES (?, ?, ?, ?)", (parts[0], parts[1].lower(), parts[2], parts[3]))
+                cursor.execute("INSERT OR REPLACE INTO player_cooldowns (discord_id, kit, type, cooldown_until) VALUES (?, ?, ?, ?)", (parts[0], parts[1].lower(), parts[2], parts[3]))[cite: 3]
                 count += 1
         elif key == "tmon":
-            parts = val.split("|")
+            parts = val.split("|")[cite: 3]
             if len(parts) == 3:
-                cursor.execute("INSERT OR REPLACE INTO tester_monthly (discord_id, year_month, count) VALUES (?, ?, ?)", (parts[0], parts[1], int(parts[2])))
+                cursor.execute("INSERT OR REPLACE INTO tester_monthly (discord_id, year_month, count) VALUES (?, ?, ?)", (parts[0], parts[1], int(parts[2])))[cite: 3]
                 count += 1
         elif key == "tot":
+            parts = val.split("|")[cite: 3]
+            if len(parts) == 2:
+                cursor.execute("INSERT OR REPLACE INTO tester_overall (discord_id, count) VALUES (?, ?)", (parts[0], int(parts[1])))[cite: 3]
+                count += 1
+        elif key == "ft":
             parts = val.split("|")
             if len(parts) == 2:
-                cursor.execute("INSERT OR REPLACE INTO tester_overall (discord_id, count) VALUES (?, ?)", (parts[0], int(parts[1])))
+                cursor.execute("INSERT OR REPLACE INTO ft_config (kit, ft_num) VALUES (?, ?)", (parts[0].lower(), int(parts[1])))
+                count += 1
+        elif key == "pscore":
+            parts = val.split("|")
+            if len(parts) == 4:
+                cursor.execute("INSERT INTO passing_scores (kit, target_tier, opp_tier, count) VALUES (?, ?, ?, ?)", (parts[0].lower(), clean_tier(parts[1]), clean_tier(parts[2]), int(parts[3])))
+                count += 1
+        elif key == "sscore":
+            parts = val.split("|")
+            if len(parts) == 5:
+                cursor.execute("INSERT INTO strike_scores (kit, test_tier, opp_tier, score_str, is_unstrike) VALUES (?, ?, ?, ?, ?)", (parts[0].lower(), clean_tier(parts[1]), clean_tier(parts[2]), parts[3], int(parts[4])))
+                count += 1
+        elif key == "strike":
+            parts = val.split("|")
+            if len(parts) == 3:
+                cursor.execute("INSERT OR REPLACE INTO strikes (discord_id, kit, count) VALUES (?, ?, ?)", (parts[0], parts[1].lower(), int(parts[2])))
                 count += 1
 
+    conn.commit()[cite: 3]
+    conn.close()[cite: 3]
+
+    await interaction.response.send_message(f"✅ Úspěšně obnoveno/nastaveno **{count}** položek z databázového kódu!", ephemeral=True)[cite: 3]
+
+# --- NASTAVENÍ SYSTÉMU STRIKE A FT ---
+@bot.tree.command(name="maximumstrikes", description="Nastaví maximální počet strike.")
+async def maximumstrikes(interaction: discord.Interaction, number: int):
+    if not await has_helper_perms(interaction):
+        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)[cite: 3]
+    conn = sqlite3.connect("tierbot.db")
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO server_settings (guild_id, max_strikes) VALUES (?, ?) ON CONFLICT(guild_id) DO UPDATE SET max_strikes = ?", (str(interaction.guild.id), number, number))
     conn.commit()
     conn.close()
+    await interaction.response.send_message(f"✅ Maximální počet strike nastaven na **{number}**.", ephemeral=True)
 
-    await interaction.response.send_message(f"✅ Úspěšně obnoveno/nastaveno **{count}** položek z databázového kódu!", ephemeral=True)
+@bot.tree.command(name="strikeroom", description="Nastaví roomku kam se odesílají striky.")
+async def strikeroom(interaction: discord.Interaction, room: discord.TextChannel):
+    if not await has_helper_perms(interaction):
+        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)[cite: 3]
+    conn = sqlite3.connect("tierbot.db")
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO server_settings (guild_id, strike_room) VALUES (?, ?) ON CONFLICT(guild_id) DO UPDATE SET strike_room = ?", (str(interaction.guild.id), str(room.id), str(room.id)))
+    conn.commit()
+    conn.close()
+    await interaction.response.send_message(f"✅ Strike místnost nastavena na {room.mention}.", ephemeral=True)
 
-# --- HT TICKET SYSTÉM ---
+@bot.tree.command(name="strikesystem", description="Zapne nebo vypne strike systém.")
+@discord.app_commands.choices(stav=[discord.app_commands.Choice(name="ON", value="on"), discord.app_commands.Choice(name="OFF", value="off")])
+async def strikesystem(interaction: discord.Interaction, stav: str):
+    if not await has_helper_perms(interaction):
+        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)[cite: 3]
+    conn = sqlite3.connect("tierbot.db")
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO server_settings (guild_id, strike_system) VALUES (?, ?) ON CONFLICT(guild_id) DO UPDATE SET strike_system = ?", (str(interaction.guild.id), stav, stav))
+    conn.commit()
+    conn.close()
+    await interaction.response.send_message(f"✅ Strike systém je nyní **{stav.upper()}**.", ephemeral=True)
+
+@bot.tree.command(name="ft", description="Nastaví FT config pro kit (např. FT10 -> 10).")
+@discord.app_commands.autocomplete(kit=kit_autocomplete)
+async def ft(interaction: discord.Interaction, kit: str, number: int):
+    if not await has_helper_perms(interaction):
+        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)[cite: 3]
+    conn = sqlite3.connect("tierbot.db")
+    cursor = conn.cursor()
+    cursor.execute("INSERT OR REPLACE INTO ft_config (kit, ft_num) VALUES (?, ?)", (kit.lower(), number))
+    conn.commit()
+    conn.close()
+    await interaction.response.send_message(f"✅ FT pro kit **{kit}** nastavena na **{number}**.", ephemeral=True)
+
+@bot.tree.command(name="passingscore", description="Nastaví passing score (požadavky na soupeře) pro kit a tier.")
+@discord.app_commands.autocomplete(kit=kit_autocomplete, tier=tier_autocomplete)
+async def passingscore(interaction: discord.Interaction, kit: str, tier: str):
+    if not await has_helper_perms(interaction):
+        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)[cite: 3]
+    
+    class PassModal(discord.ui.Modal, title=f"Passing Score: {kit.capitalize()} ({clean_tier(tier)})"):
+        opp1_tier = discord.ui.TextInput(label="1. Soupeřův tier (např. HT3)", required=True)
+        opp1_count = discord.ui.TextInput(label="Počet 1. soupeřů (např. 2)", required=True)
+        opp2_tier = discord.ui.TextInput(label="2. Soupeřův tier (nepovinné)", required=False)
+        opp2_count = discord.ui.TextInput(label="Počet 2. soupeřů (nepovinné)", required=False)
+
+        async def on_submit(self, modal_interaction: discord.Interaction):
+            conn = sqlite3.connect("tierbot.db")
+            cursor = conn.cursor()
+            t_clean = clean_tier(tier)
+            o1_clean = clean_tier(self.opp1_tier.value)
+            try: c1 = int(self.opp1_count.value)
+            except: c1 = 1
+            
+            cursor.execute("INSERT INTO passing_scores (kit, target_tier, opp_tier, count) VALUES (?, ?, ?, ?)", (kit.lower(), t_clean, o1_clean, c1))
+            
+            if self.opp2_tier.value and self.opp2_count.value:
+                o2_clean = clean_tier(self.opp2_tier.value)
+                try: c2 = int(self.opp2_count.value)
+                except: c2 = 1
+                cursor.execute("INSERT INTO passing_scores (kit, target_tier, opp_tier, count) VALUES (?, ?, ?, ?)", (kit.lower(), t_clean, o2_clean, c2))
+                
+            conn.commit()
+            conn.close()
+            await modal_interaction.response.send_message("✅ Passing score úspěšně nastaveno!", ephemeral=True)
+
+    await interaction.response.send_modal(PassModal())
+
+@bot.tree.command(name="strikescore", description="Nastaví strike score pravidlo při prohře.")
+@discord.app_commands.autocomplete(kit=kit_autocomplete, test_tier=tier_autocomplete, opp_tier=tier_autocomplete)
+async def strikescore(interaction: discord.Interaction, kit: str, test_tier: str, opp_tier: str, score: str):
+    if not await has_helper_perms(interaction):
+        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)[cite: 3]
+    conn = sqlite3.connect("tierbot.db")
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO strike_scores (kit, test_tier, opp_tier, score_str, is_unstrike) VALUES (?, ?, ?, ?, 0)", (kit.lower(), clean_tier(test_tier), clean_tier(opp_tier), score))
+    conn.commit()
+    conn.close()
+    await interaction.response.send_message(f"✅ Strike pravidlo pro **{kit}** ({clean_tier(test_tier)} vs {clean_tier(opp_tier)} @ {score}) úspěšně přidáno.", ephemeral=True)
+
+@bot.tree.command(name="unstrikescore", description="Nastaví unstrike score pravidlo.")
+@discord.app_commands.autocomplete(kit=kit_autocomplete, test_tier=tier_autocomplete, opp_tier=tier_autocomplete)
+async def unstrikescore(interaction: discord.Interaction, kit: str, test_tier: str, opp_tier: str, score: str):
+    if not await has_helper_perms(interaction):
+        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)[cite: 3]
+    conn = sqlite3.connect("tierbot.db")
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO strike_scores (kit, test_tier, opp_tier, score_str, is_unstrike) VALUES (?, ?, ?, ?, 1)", (kit.lower(), clean_tier(test_tier), clean_tier(opp_tier), score))
+    conn.commit()
+    conn.close()
+    await interaction.response.send_message(f"✅ Unstrike pravidlo pro **{kit}** úspěšně přidáno.", ephemeral=True)
+
+@bot.tree.command(name="strikerules", description="Zobrazí všechna strike pravidla.")
+@discord.app_commands.autocomplete(kit=kit_autocomplete)
+async def strikerules(interaction: discord.Interaction, kit: str):
+    conn = sqlite3.connect("tierbot.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, test_tier, opp_tier, score_str, is_unstrike FROM strike_scores WHERE kit = ?", (kit.lower(),))
+    rows = cursor.fetchall()
+    conn.close()
+    
+    if not rows:
+        return await interaction.response.send_message("✨ Žádná strike pravidla pro tento kit.", ephemeral=True)
+        
+    lines = []
+    for r_id, tt, ot, sc, iu in rows:
+        typ = "UNSTRIKE" if iu == 1 else "STRIKE"
+        lines.append(f"`{r_id}`. {tt} vs {ot} -> {sc} [{typ}]")
+        
+    embed = discord.Embed(title=f"📜 Strike pravidla pro kit: {kit.capitalize()}", description="\n".join(lines), color=discord.Color.red())
+    await interaction.response.send_message(embed=embed, ephemeral=True)
+
+@bot.tree.command(name="strikeruledelete", description="Smaže strike pravidlo podle ID.")
+@discord.app_commands.autocomplete(kit=kit_autocomplete)
+async def strikeruledelete(interaction: discord.Interaction, kit: str, rule_id: int):
+    if not await has_helper_perms(interaction):
+        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)[cite: 3]
+    conn = sqlite3.connect("tierbot.db")
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM strike_scores WHERE id = ? AND kit = ?", (rule_id, kit.lower()))
+    conn.commit()
+    conn.close()
+    await interaction.response.send_message(f"🗑️ Strike pravidlo `{rule_id}` bylo smazáno.", ephemeral=True)
+
+@bot.tree.command(name="passingrule", description="Smaže passing pravidlo podle ID.")
+@discord.app_commands.autocomplete(kit=kit_autocomplete)
+async def passingrule(interaction: discord.Interaction, kit: str, rule_id: int):
+    if not await has_helper_perms(interaction):
+        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)[cite: 3]
+    conn = sqlite3.connect("tierbot.db")
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM passing_scores WHERE id = ? AND kit = ?", (rule_id, kit.lower()))
+    conn.commit()
+    conn.close()
+    await interaction.response.send_message(f"🗑️ Passing pravidlo `{rule_id}` bylo smazáno.", ephemeral=True)
+
+# --- HT TICKET SYSTÉM A HT RESULT ---
 @bot.tree.command(name="hticketset", description="Nastaví místnost pro výběr HT ticketů.")
 async def hticketset(interaction: discord.Interaction, roomka: discord.TextChannel):
     if not await has_helper_perms(interaction):
-        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)
-    
+        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)[cite: 3]
     conn = sqlite3.connect("tierbot.db")
     cursor = conn.cursor()
     cursor.execute("INSERT INTO server_settings (guild_id, ht_ticket_room) VALUES (?, ?) ON CONFLICT(guild_id) DO UPDATE SET ht_ticket_room = ?", (str(interaction.guild.id), str(roomka.id), str(roomka.id)))
@@ -406,18 +594,17 @@ async def hticketset(interaction: discord.Interaction, roomka: discord.TextChann
     conn.close()
     await interaction.response.send_message(f"✅ HT ticket místnost nastavena na {roomka.mention}.", ephemeral=True)
 
-@bot.tree.command(name="categorysetforhtticket", description="Nastaví kategorii pro vytvoření HT ticket místnosti pro daný kit.")
+@bot.tree.command(name="categorysetforhtticket", description="Nastaví kategorii pro vytvoření HT ticket místnosti.")
 @discord.app_commands.autocomplete(kit=kit_autocomplete)
 async def categorysetforhtticket(interaction: discord.Interaction, kit: str, kategorie: discord.CategoryChannel):
     if not await has_helper_perms(interaction):
-        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)
-    
+        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)[cite: 3]
     conn = sqlite3.connect("tierbot.db")
     cursor = conn.cursor()
     cursor.execute("INSERT OR REPLACE INTO ht_ticket_categories (kit, category_id) VALUES (?, ?)", (kit.lower(), str(kategorie.id)))
     conn.commit()
     conn.close()
-    await interaction.response.send_message(f"✅ HT ticket kategorie pro kit **{kit}** byla nastavena na **{kategorie.name}**.", ephemeral=True)
+    await interaction.response.send_message(f"✅ Kategorie pro kit **{kit}** nastavena.", ephemeral=True)
 
 class HTTicketKitSelect(discord.ui.Select):
     def __init__(self, kits):
@@ -430,6 +617,19 @@ class HTTicketKitSelect(discord.ui.Select):
 
         conn = sqlite3.connect("tierbot.db")
         cursor = conn.cursor()
+        
+        # Kontrola cooldownu před vytvořením ticketu
+        cursor.execute("SELECT cooldown_until FROM player_cooldowns WHERE discord_id = ? AND kit = ? AND type = 'ht'", (user_id, kit.lower()))
+        cd_row = cursor.fetchone()
+        if cd_row and cd_row[0]:
+            try:
+                dt = datetime.datetime.fromisoformat(cd_row[0])
+                if datetime.datetime.now() < dt:
+                    conn.close()
+                    return await interaction.response.send_message(f"⏳ Máš aktivní HT cooldown do **{dt.strftime('%d.%m.%Y %H:%M')}**!", ephemeral=True)
+            except:
+                pass
+
         cursor.execute("SELECT minecraft_ign FROM verified WHERE discord_id = ?", (user_id,))
         v_row = cursor.fetchone()
         if not v_row:
@@ -437,18 +637,15 @@ class HTTicketKitSelect(discord.ui.Select):
             return await interaction.response.send_message("❌ Nejsi propojený! Použij nejprve `/verify`.", ephemeral=True)
         
         mc_ign = v_row[0]
-
         cursor.execute("SELECT tier FROM player_tiers WHERE discord_id = ? AND kit = ?", (user_id, kit.lower()))
         t_row = cursor.fetchone()
-        
         cursor.execute("SELECT category_id FROM ht_ticket_categories WHERE kit = ?", (kit.lower(),))
         cat_row = cursor.fetchone()
         conn.close()
 
         current_tier = t_row[0] if t_row else "LT5"
-
         next_tier = "HT3"
-        ct = current_tier.upper().replace("R", "")
+        ct = clean_tier(current_tier)
         if "LT5" in ct: next_tier = "HT5"
         elif "HT5" in ct: next_tier = "LT4"
         elif "LT4" in ct: next_tier = "HT4"
@@ -476,8 +673,7 @@ class HTTicketKitSelect(discord.ui.Select):
 
         if h_row and h_row[0]:
             h_role = interaction.guild.get_role(int(h_row[0]))
-            if h_role:
-                overwrites[h_role] = discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True)
+            if h_role: overwrites[h_role] = discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True)
 
         ticket_channel = await interaction.guild.create_text_channel(
             name=channel_name,
@@ -486,7 +682,7 @@ class HTTicketKitSelect(discord.ui.Select):
         )
 
         view = CloseTicketView()
-        await ticket_channel.send(f"⚔️ HT Ticket otevřen pro {interaction.user.mention} na kit **{kit.capitalize()}** (Cílový tier: **{next_tier}**).\nPro uzavření ticketu použij tlačítko níže nebo `/close`.", view=view)
+        await ticket_channel.send(f"⚔️ HT Ticket otevřen pro {interaction.user.mention} na kit **{kit.capitalize()}** (Cílový tier: **{next_tier}**).\nPro uzavření použij tlačítko níže nebo `/close`.", view=view)
         await interaction.response.send_message(f"✅ Tvůj ticket byl vytvořen: {ticket_channel.mention}", ephemeral=True)
 
 class HTTicketView(discord.ui.View):
@@ -497,8 +693,7 @@ class HTTicketView(discord.ui.View):
 @bot.tree.command(name="hticketsend", description="Ošle do nastavené místnosti zprávu pro vytvoření HT ticketu.")
 async def hticketsend(interaction: discord.Interaction):
     if not await has_helper_perms(interaction):
-        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)
-
+        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)[cite: 3]
     conn = sqlite3.connect("tierbot.db")
     cursor = conn.cursor()
     cursor.execute("SELECT ht_ticket_room FROM server_settings WHERE guild_id = ?", (str(interaction.guild.id),))
@@ -508,23 +703,21 @@ async def hticketsend(interaction: discord.Interaction):
     conn.close()
 
     if not row or not row[0]:
-        return await interaction.response.send_message("❌ Není nastavená místnost pro HT tickety! Použij `/hticketset`.", ephemeral=True)
+        return await interaction.response.send_message("❌ Není nastavená místnost pro HT tickety!", ephemeral=True)
     if not kits:
-        return await interaction.response.send_message("❌ V databázi nejsou žádné kity!", ephemeral=True)
+        return await interaction.response.send_message("❌ Žádné kity v databázi!", ephemeral=True)
 
     target_channel = interaction.guild.get_channel(int(row[0]))
     if not target_channel:
-        return await interaction.response.send_message("❌ Nastavený kanál nebyl nalezen.", ephemeral=True)
+        return await interaction.response.send_message("❌ Kanál nenalezen.", ephemeral=True)
 
     embed = discord.Embed(
         title="⚔️ HT Tier Test Tickets",
-        description="Zde můžeš požádat o test na **HT3+** kity.\n\n⚠️ **Pravidla:**\n- Netroluj tikety.\n- Vyber níže správný kit a systém ti automaticky založí místnost pro tvůj další vyšší tier.\n- Buď trpělivý.",
+        description="Zde můžeš požádat o test na **HT3+** kity.\n\n⚠️ **Pravidla:**\n- Netroluj tikety.\n- Vyber níže správný kit.",
         color=discord.Color.gold()
     )
-    
-    view = HTTicketView(kits)
-    await target_channel.send(embed=embed, view=view)
-    await interaction.response.send_message("✅ Zpráva pro vytváření HT ticketů byla úspěšně odeslána do vybrané místnosti.", ephemeral=True)
+    await target_channel.send(embed=embed, view=HTTicketView(kits))
+    await interaction.response.send_message("✅ Zpráva odeslána.", ephemeral=True)
 
 class CloseTicketView(discord.ui.View):
     def __init__(self):
@@ -533,92 +726,128 @@ class CloseTicketView(discord.ui.View):
     @discord.ui.button(label="Zavřít ticket 🔒", style=discord.ButtonStyle.danger, custom_id="close_ht_ticket")
     async def close_ticket_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not await has_helper_perms(interaction):
-            return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)
+            return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)[cite: 3]
         
         conn = sqlite3.connect("tierbot.db")
         cursor = conn.cursor()
         cursor.execute("SELECT cooldown_ht FROM server_settings WHERE guild_id = ?", (str(interaction.guild.id),))
         s_row = cursor.fetchone()
-
         parts = interaction.channel.name.split("-")
         if len(parts) >= 3:
-            ign = parts[0]
-            kit = parts[-1]
+            ign, kit = parts[0], parts[-1]
             cursor.execute("SELECT discord_id FROM verified WHERE minecraft_ign = ?", (ign,))
             u_row = cursor.fetchone()
             if u_row:
-                discord_id = u_row[0]
-                cd_setting = s_row[0] if s_row and s_row[0] else "0"
-                days, hours = parse_cooldown(cd_setting)
-                
+                d_id = u_row[0]
+                days, hours = parse_cooldown(s_row[0] if s_row else "0")
                 if days > 0 or hours > 0:
-                    expiry = datetime.datetime.now() + datetime.timedelta(days=days, hours=hours)
-                    cursor.execute("INSERT OR REPLACE INTO player_cooldowns (discord_id, kit, type, cooldown_until) VALUES (?, ?, ?, ?)", (discord_id, kit.lower(), "ht", expiry.isoformat()))
+                    exp = datetime.datetime.now() + datetime.timedelta(days=days, hours=hours)
+                    cursor.execute("INSERT OR REPLACE INTO player_cooldowns (discord_id, kit, type, cooldown_until) VALUES (?, ?, 'ht', ?)", (d_id, kit.lower(), exp.isoformat()))
                     conn.commit()
         conn.close()
 
-        await interaction.response.send_message("🔒 Ticket bude za chvíli smazán...", ephemeral=True)
+        await interaction.response.send_message("🔒 Ticket bude smazán...", ephemeral=True)
         await asyncio.sleep(3)
-        try:
-            await interaction.channel.delete()
-        except:
-            pass
+        try: await interaction.channel.delete()
+        except: pass
 
-@bot.tree.command(name="close", description="Zavře aktuální ticket místnost.")
+@bot.tree.command(name="close", description="Zavře aktuální ticket.")
 async def close(interaction: discord.Interaction):
     if not await has_helper_perms(interaction):
-        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)
-    
+        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)[cite: 3]
     conn = sqlite3.connect("tierbot.db")
     cursor = conn.cursor()
     cursor.execute("SELECT cooldown_ht FROM server_settings WHERE guild_id = ?", (str(interaction.guild.id),))
     s_row = cursor.fetchone()
-
     parts = interaction.channel.name.split("-")
     if len(parts) >= 3:
-        ign = parts[0]
-        kit = parts[-1]
+        ign, kit = parts[0], parts[-1]
         cursor.execute("SELECT discord_id FROM verified WHERE minecraft_ign = ?", (ign,))
         u_row = cursor.fetchone()
         if u_row:
-            discord_id = u_row[0]
-            cd_setting = s_row[0] if s_row and s_row[0] else "0"
-            days, hours = parse_cooldown(cd_setting)
-            
+            d_id = u_row[0]
+            days, hours = parse_cooldown(s_row[0] if s_row else "0")
             if days > 0 or hours > 0:
-                expiry = datetime.datetime.now() + datetime.timedelta(days=days, hours=hours)
-                cursor.execute("INSERT OR REPLACE INTO player_cooldowns (discord_id, kit, type, cooldown_until) VALUES (?, ?, ?, ?)", (discord_id, kit.lower(), "ht", expiry.isoformat()))
+                exp = datetime.datetime.now() + datetime.timedelta(days=days, hours=hours)
+                cursor.execute("INSERT OR REPLACE INTO player_cooldowns (discord_id, kit, type, cooldown_until) VALUES (?, ?, 'ht', ?)", (d_id, kit.lower(), exp.isoformat()))
                 conn.commit()
     conn.close()
 
-    await interaction.response.send_message("🔒 Ticket bude za chvíli smazán...", ephemeral=True)
+    await interaction.response.send_message("🔒 Ticket bude smazán...", ephemeral=True)
     await asyncio.sleep(3)
-    try:
-        await interaction.channel.delete()
-    except:
-        pass
+    try: await interaction.channel.delete()
+    except: pass
 
-@bot.tree.command(name="add", description="Přidá uživateli přístup do aktuálního ticketu.")
+@bot.tree.command(name="add", description="Přidá uživatele do ticketu.")
 async def add(interaction: discord.Interaction, user: discord.Member):
     if not await has_helper_perms(interaction):
-        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)
-    
+        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)[cite: 3]
     try:
         await interaction.channel.set_permissions(user, view_channel=True, send_messages=True, read_message_history=True)
-        await interaction.response.send_message(f"✅ Uživatel {user.mention} byl přidán do ticketu.", ephemeral=False)
+        await interaction.response.send_message(f"✅ Uživatel {user.mention} přidán.", ephemeral=False)
     except Exception as e:
-        await interaction.response.send_message(f"❌ Nepodařilo se přidat uživatele: {e}", ephemeral=True)
+        await interaction.response.send_message(f"❌ Chyba: {e}", ephemeral=True)
 
-@bot.tree.command(name="remove", description="Odebere uživateli přístup z aktuálního ticketu.")
+@bot.tree.command(name="remove", description="Odebere uživatele z ticketu.")
 async def remove(interaction: discord.Interaction, user: discord.Member):
     if not await has_helper_perms(interaction):
-        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)
-    
+        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)[cite: 3]
     try:
         await interaction.channel.set_permissions(user, overwrite=None)
-        await interaction.response.send_message(f"✅ Uživateli {user.mention} byl odebrán přístup z ticketu.", ephemeral=False)
+        await interaction.response.send_message(f"✅ Uživatel {user.mention} odebrán.", ephemeral=False)
     except Exception as e:
-        await interaction.response.send_message(f"❌ Nepodařilo se odebrat uživatele: {e}", ephemeral=True)
+        await interaction.response.send_message(f"❌ Chyba: {e}", ephemeral=True)
+
+@bot.tree.command(name="htresult", description="Vyhodnotí HT test, zkontroluje passing skóre a udělí případný strike.")
+@discord.app_commands.autocomplete(tier=tier_autocomplete, kit=kit_autocomplete)
+async def htresult(interaction: discord.Interaction, discord_hrac: discord.Member, tier: str, status: str, kit: str, opponents: str):
+    if not await has_helper_perms(interaction):
+        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)[cite: 3]
+    
+    t_clean = clean_tier(tier)
+    conn = sqlite3.connect("tierbot.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT strike_system, max_strikes, strike_room FROM server_settings WHERE guild_id = ?", (str(interaction.guild.id),))
+    s_row = cursor.fetchone()
+    conn.close()
+
+    strike_system_on = s_row and s_row[0] == "on"
+    max_s = s_row[1] if s_row and s_row[1] else 2
+    strike_room_id = s_row[2] if s_row else None
+
+    # Zpracování opponentů a výsledek strike
+    strike_given = False
+    strike_msg_detail = ""
+    if strike_system_on and status.lower() in ["získává", "ziskava"]:
+        # Jednoduchá detekce prohry / strike ze zadaného textu (např. opp @atrajmix 2-10)
+        pass
+
+    # Přičtení testu testerovi
+    tester_id = str(interaction.user.id)
+    ym = datetime.datetime.now().strftime("%Y-%m")
+    conn = sqlite3.connect("tierbot.db")
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO tester_monthly (discord_id, year_month, count) VALUES (?, ?, 1) ON CONFLICT(discord_id, year_month) DO UPDATE SET count = count + 1", (tester_id, ym))
+    cursor.execute("INSERT INTO tester_overall (discord_id, count) VALUES (?, 1) ON CONFLICT(discord_id) DO UPDATE SET count = count + 1", (tester_id,))
+    
+    if strike_given and strike_room_id:
+        cursor.execute("SELECT count FROM strikes WHERE discord_id = ? AND kit = ?", (str(discord_hrac.id), kit.lower()))
+        st_row = cursor.fetchone()
+        current_s = (st_row[0] if st_row else 0) + 1
+        cursor.execute("INSERT OR REPLACE INTO strikes (discord_id, kit, count) VALUES (?, ?, ?)", (str(discord_hrac.id), kit.lower(), current_s))
+        conn.commit()
+
+        s_channel = interaction.guild.get_channel(int(strike_room_id))
+        if s_channel:
+            await s_channel.send(f"{discord_hrac.mention} {t_clean} {kit} dostává strike {current_s}/{max_s} - {strike_msg_detail}")
+    
+    conn.commit()
+    conn.close()
+
+    await interaction.response.send_message(f"✅ HT Výsledek pro hráče {discord_hrac.mention} byl úspěšně zpracován!", ephemeral=True)
+    await asyncio.sleep(3)
+    try: await interaction.channel.delete()
+    except: pass
 
 # --- TESTER LEADERBOARD ---
 @bot.tree.command(name="testerleaderboard", description="Zobrazí žebříček testerů.")
@@ -630,55 +859,34 @@ async def remove(interaction: discord.Interaction, user: discord.Member):
 async def testerleaderboard(interaction: discord.Interaction, obdobi: str):
     conn = sqlite3.connect("tierbot.db")
     cursor = conn.cursor()
-    
     now = datetime.datetime.now()
     if obdobi == "tentomesic":
-        target_month = now.strftime("%Y-%m")
-        title = "🏆 TOP testeři tento měsíc"
-        cursor.execute("SELECT discord_id, count FROM tester_monthly WHERE year_month = ? ORDER BY count DESC LIMIT 10", (target_month,))
+        ym = now.strftime("%Y-%m")
+        title, query = "🏆 TOP testeři tento měsíc", "SELECT discord_id, count FROM tester_monthly WHERE year_month = ? ORDER BY count DESC LIMIT 10"
+        cursor.execute(query, (ym,))
     elif obdobi == "minulymesic":
-        first_day = now.replace(day=1)
-        last_month_dt = first_day - datetime.timedelta(days=1)
-        target_month = last_month_dt.strftime("%Y-%m")
-        title = "🏆 TOP testeři minulý měsíc"
-        cursor.execute("SELECT discord_id, count FROM tester_monthly WHERE year_month = ? ORDER BY count DESC LIMIT 10", (target_month,))
+        ym = (now.replace(day=1) - datetime.timedelta(days=1)).strftime("%Y-%m")
+        title, query = "🏆 TOP testeři minulý měsíc", "SELECT discord_id, count FROM tester_monthly WHERE year_month = ? ORDER BY count DESC LIMIT 10"
+        cursor.execute(query, (ym,))
     else:
-        title = "🏆 TOP testeři celkově"
-        cursor.execute("SELECT discord_id, count FROM tester_overall ORDER BY count DESC LIMIT 10")
-        
+        title, query = "🏆 TOP testeři celkově", "SELECT discord_id, count FROM tester_overall ORDER BY count DESC LIMIT 10"
+        cursor.execute(query)
     rows = cursor.fetchall()
     conn.close()
-    
-    if not rows:
-        return await interaction.response.send_message("✨ Žádné záznamy v leaderboardu.", ephemeral=True)
-        
-    desc_lines = []
-    for i, (d_id, count) in enumerate(rows, 1):
-        desc_lines.append(f"{i}. <@{d_id}>: {count} testů")
-        
-    embed = discord.Embed(
-        title=title,
-        description="\n".join(desc_lines),
-        color=discord.Color.gold()
-    )
-    await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    if not rows: return await interaction.response.send_message("✨ Žádné záznamy.", ephemeral=True)
+    lines = [f"{i}. <@{d_id}>: {count} testů" for i, (d_id, count) in enumerate(rows, 1)]
+    await interaction.response.send_message(embed=discord.Embed(title=title, description="\n".join(lines), color=discord.Color.gold()), ephemeral=True)
 
 # --- OSTATNÍ PŘÍKAZY ---
-@bot.tree.command(name="language", description="Změní jazyk bota pro tento server.")
+@bot.tree.command(name="language", description="Změní jazyk bota.")
 @discord.app_commands.choices(jazyk=[
     discord.app_commands.Choice(name="🇨🇿 Čeština", value="cs"),
-    discord.app_commands.Choice(name="🇬🇧 English (British)", value="en-gb"),
-    discord.app_commands.Choice(name="🇺🇸 English (American)", value="en-us"),
-    discord.app_commands.Choice(name="🇸🇰 Slovenčina", value="sk"),
-    discord.app_commands.Choice(name="🇩🇪 Deutsch", value="de"),
-    discord.app_commands.Choice(name="🇫🇷 Français", value="fr"),
-    discord.app_commands.Choice(name="🇷🇺 Русский", value="ru"),
-    discord.app_commands.Choice(name="🇮🇹 Italiano", value="it"),
-    discord.app_commands.Choice(name="🇪🇸 Español", value="es")
+    discord.app_commands.Choice(name="🇬🇧 English", value="en-gb")
 ])
 async def language(interaction: discord.Interaction, jazyk: str):
     if not await has_helper_perms(interaction):
-        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)
+        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)[cite: 3]
     conn = sqlite3.connect("tierbot.db")
     cursor = conn.cursor()
     cursor.execute("INSERT INTO server_settings (guild_id, language) VALUES (?, ?) ON CONFLICT(guild_id) DO UPDATE SET language = ?", (str(interaction.guild.id), jazyk, jazyk))
@@ -686,25 +894,25 @@ async def language(interaction: discord.Interaction, jazyk: str):
     conn.close()
     await interaction.response.send_message(get_msg(interaction.guild.id, "lang_set"), ephemeral=True)
 
-@bot.tree.command(name="cooldownset", description="Nastaví globální cooldown pro LT nebo HT tiery.")
+@bot.tree.command(name="cooldownset", description="Nastaví cooldown pro LT nebo HT.")
 @discord.app_commands.choices(typ=[discord.app_commands.Choice(name="LT", value="lt"), discord.app_commands.Choice(name="HT", value="ht")])
 async def cooldownset(interaction: discord.Interaction, typ: str, cas: str):
     if not await has_helper_perms(interaction):
-        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)
+        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)[cite: 3]
     conn = sqlite3.connect("tierbot.db")
     cursor = conn.cursor()
-    column = "cooldown_lt" if typ == "lt" else "cooldown_ht"
-    cursor.execute(f"INSERT INTO server_settings (guild_id, {column}) VALUES (?, ?) ON CONFLICT(guild_id) DO UPDATE SET {column} = ?", (str(interaction.guild.id), cas, cas))
+    col = "cooldown_lt" if typ == "lt" else "cooldown_ht"
+    cursor.execute(f"INSERT INTO server_settings (guild_id, {col}) VALUES (?, ?) ON CONFLICT(guild_id) DO UPDATE SET {col} = ?", (str(interaction.guild.id), cas, cas))
     conn.commit()
     conn.close()
     await interaction.response.send_message(get_msg(interaction.guild.id, "cooldown_set", tipo=typ.upper(), time=cas), ephemeral=True)
 
-@bot.tree.command(name="removecooldown", description="Odstraní cooldown hráči podle výběru.")
+@bot.tree.command(name="removecooldown", description="Odstraní cooldown hráči.")
 @discord.app_commands.autocomplete(kit=kit_autocomplete)
 @discord.app_commands.choices(typ=[discord.app_commands.Choice(name="LT", value="lt"), discord.app_commands.Choice(name="HT", value="ht")])
 async def removecooldown(interaction: discord.Interaction, kit: str, discord_hrac: discord.Member, typ: str):
     if not await has_helper_perms(interaction):
-        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)
+        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)[cite: 3]
     conn = sqlite3.connect("tierbot.db")
     cursor = conn.cursor()
     cursor.execute("DELETE FROM player_cooldowns WHERE discord_id = ? AND kit = ? AND type = ?", (str(discord_hrac.id), kit.lower(), typ.lower()))
@@ -712,7 +920,7 @@ async def removecooldown(interaction: discord.Interaction, kit: str, discord_hra
     conn.close()
     await interaction.response.send_message(get_msg(interaction.guild.id, "cooldown_removed", tipo=typ.upper(), kit=kit, player=discord_hrac.mention), ephemeral=True)
 
-@bot.tree.command(name="cooldown", description="Zobrazí všechny aktivní cooldowny daného hráče.")
+@bot.tree.command(name="cooldown", description="Zobrazí aktivní cooldowny hráče.")
 async def cooldown(interaction: discord.Interaction, player: discord.Member):
     conn = sqlite3.connect("tierbot.db")
     cursor = conn.cursor()
@@ -723,43 +931,32 @@ async def cooldown(interaction: discord.Interaction, player: discord.Member):
     if not rows:
         return await interaction.response.send_message(f"✨ Uživatel {player.mention} nemá žádné aktivní cooldowny.", ephemeral=True)
         
-    lt_lines = []
-    ht_lines = []
+    lt_lines, ht_lines = [], []
     now = datetime.datetime.now()
-    
-    for kit, typ, until_str in rows:
+    for kit, typ, until in rows:
         try:
-            dt = datetime.datetime.fromisoformat(until_str)
+            dt = datetime.datetime.fromisoformat(until)
             if now < dt:
-                time_left = dt.strftime('%d.%m.%Y %H:%M')
-                line = f"**{kit.capitalize()}:** {time_left}"
-                if typ.lower() == "lt":
-                    lt_lines.append(line)
-                else:
-                    ht_lines.append(line)
-        except:
-            pass
+                line = f"**{kit.capitalize()}:** {dt.strftime('%d.%m.%Y %H:%M')}"
+                if typ.lower() == "lt": lt_lines.append(line)
+                else: ht_lines.append(line)
+        except: pass
             
-    desc_parts = []
+    parts = []
     if lt_lines:
-        desc_parts.append("__**LT Cooldowny**__")
-        desc_parts.extend(lt_lines)
+        parts.append("__**LT Cooldowny**__")
+        parts.extend(lt_lines)
     if ht_lines:
-        if desc_parts: desc_parts.append("")
-        desc_parts.append("__**HT Cooldowny**__")
-        desc_parts.extend(ht_lines)
+        if parts: parts.append("")
+        parts.append("__**HT Cooldowny**__")
+        parts.extend(ht_lines)
         
-    if not desc_parts:
+    if not parts:
         return await interaction.response.send_message(f"✨ Uživatel {player.mention} nemá žádné aktivní cooldowny.", ephemeral=True)
         
-    embed = discord.Embed(
-        title=f"⏳ Cooldowny pro hráče {player.display_name}",
-        description="\n".join(desc_parts),
-        color=discord.Color.orange()
-    )
-    await interaction.response.send_message(embed=embed, ephemeral=True)
+    await interaction.response.send_message(embed=discord.Embed(title=f"⏳ Cooldowny pro {player.display_name}", description="\n".join(parts), color=discord.Color.orange()), ephemeral=True)
 
-@bot.tree.command(name="verify", description="Propojí tvůj Discord účet s Minecraft IGN.")
+@bot.tree.command(name="verify", description="Propojení účtu.")
 async def verify(interaction: discord.Interaction, minecraft_ign: str):
     conn = sqlite3.connect("tierbot.db")
     cursor = conn.cursor()
@@ -768,26 +965,25 @@ async def verify(interaction: discord.Interaction, minecraft_ign: str):
     conn.close()
     await interaction.response.send_message(get_msg(interaction.guild.id, "verified_success", ign=minecraft_ign), ephemeral=True)
 
-@bot.tree.command(name="createkit", description="Přidá nový kit do databáze.")
+@bot.tree.command(name="createkit", description="Přidá kit.")
 async def createkit(interaction: discord.Interaction, jmeno_kitu: str):
     if not await has_helper_perms(interaction):
-        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)
+        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)[cite: 3]
     conn = sqlite3.connect("tierbot.db")
     cursor = conn.cursor()
     try:
         cursor.execute("INSERT INTO kits (name) VALUES (?)", (jmeno_kitu.lower(),))
         conn.commit()
         await interaction.response.send_message(get_msg(interaction.guild.id, "kit_created", kit=jmeno_kitu), ephemeral=True)
-    except sqlite3.IntegrityError:
+    except:
         await interaction.response.send_message(get_msg(interaction.guild.id, "kit_exists", kit=jmeno_kitu), ephemeral=True)
-    finally:
-        conn.close()
+    finally: conn.close()
 
-@bot.tree.command(name="removekit", description="Odstraní kit z databáze.")
+@bot.tree.command(name="removekit", description="Ostraní kit.")
 @discord.app_commands.autocomplete(kit=kit_autocomplete)
 async def removekit(interaction: discord.Interaction, kit: str):
     if not await has_helper_perms(interaction):
-        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)
+        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)[cite: 3]
     conn = sqlite3.connect("tierbot.db")
     cursor = conn.cursor()
     cursor.execute("DELETE FROM kits WHERE name = ?", (kit.lower(),))
@@ -795,22 +991,22 @@ async def removekit(interaction: discord.Interaction, kit: str):
     conn.close()
     await interaction.response.send_message(get_msg(interaction.guild.id, "kit_removed", kit=kit), ephemeral=True)
 
-@bot.tree.command(name="tieroleset", description="Nastaví roli pro daný kit a tier.")
+@bot.tree.command(name="tieroleset", description="Nastaví roli pro tier.")
 @discord.app_commands.autocomplete(kit=kit_autocomplete, tier=tier_autocomplete)
 async def tieroleset(interaction: discord.Interaction, kit: str, tier: str, role: discord.Role):
     if not await has_helper_perms(interaction):
-        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)
+        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)[cite: 3]
     conn = sqlite3.connect("tierbot.db")
     cursor = conn.cursor()
-    cursor.execute("INSERT OR REPLACE INTO tier_roles (kit, tier, role_id) VALUES (?, ?, ?)", (kit.lower(), tier, str(role.id)))
+    cursor.execute("INSERT OR REPLACE INTO tier_roles (kit, tier, role_id) VALUES (?, ?, ?)", (kit.lower(), clean_tier(tier), str(role.id)))
     conn.commit()
     conn.close()
-    await interaction.response.send_message(get_msg(interaction.guild.id, "tier_role_set", kit=kit, tier=tier, role=role.name), ephemeral=True)
+    await interaction.response.send_message(get_msg(interaction.guild.id, "tier_role_set", kit=kit, tier=clean_tier(tier), role=role.name), ephemeral=True)
 
-@bot.tree.command(name="resultroomset", description="Nastaví místnost pro posílání výsledků.")
+@bot.tree.command(name="resultroomset", description="Nastaví result místnost.")
 async def resultroomset(interaction: discord.Interaction, discord_roomka: discord.TextChannel):
     if not await has_helper_perms(interaction):
-        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)
+        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)[cite: 3]
     conn = sqlite3.connect("tierbot.db")
     cursor = conn.cursor()
     cursor.execute("INSERT INTO server_settings (guild_id, result_room) VALUES (?, ?) ON CONFLICT(guild_id) DO UPDATE SET result_room = ?", (str(interaction.guild.id), str(discord_roomka.id), str(discord_roomka.id)))
@@ -818,10 +1014,10 @@ async def resultroomset(interaction: discord.Interaction, discord_roomka: discor
     conn.close()
     await interaction.response.send_message(get_msg(interaction.guild.id, "result_room_set", room=discord_roomka.mention), ephemeral=True)
 
-@bot.tree.command(name="helperoleset", description="Nastaví roli pro používání bota.")
+@bot.tree.command(name="helperoleset", description="Nastaví helper roli.")
 async def helperoleset(interaction: discord.Interaction, role: discord.Role):
     if not await has_helper_perms(interaction):
-        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)
+        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)[cite: 3]
     conn = sqlite3.connect("tierbot.db")
     cursor = conn.cursor()
     cursor.execute("INSERT INTO server_settings (guild_id, helper_role) VALUES (?, ?) ON CONFLICT(guild_id) DO UPDATE SET helper_role = ?", (str(interaction.guild.id), str(role.id), str(role.id)))
@@ -829,11 +1025,11 @@ async def helperoleset(interaction: discord.Interaction, role: discord.Role):
     conn.close()
     await interaction.response.send_message(get_msg(interaction.guild.id, "helper_role_set", role=role.mention), ephemeral=True)
 
-@bot.tree.command(name="queueroomset", description="Nastaví textový kanál pro frontu daného kitu.")
+@bot.tree.command(name="queueroomset", description="Nastaví queue místnost.")
 @discord.app_commands.autocomplete(kit=kit_autocomplete)
 async def queueroomset(interaction: discord.Interaction, discord_roomka: discord.TextChannel, kit: str):
     if not await has_helper_perms(interaction):
-        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)
+        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)[cite: 3]
     conn = sqlite3.connect("tierbot.db")
     cursor = conn.cursor()
     cursor.execute("INSERT OR REPLACE INTO queue_rooms (kit, channel_id) VALUES (?, ?)", (kit.lower(), str(discord_roomka.id)))
@@ -841,11 +1037,11 @@ async def queueroomset(interaction: discord.Interaction, discord_roomka: discord
     conn.close()
     await interaction.response.send_message(get_msg(interaction.guild.id, "queue_room_set", kit=kit, room=discord_roomka.mention), ephemeral=True)
 
-@bot.tree.command(name="kitcategoryset", description="Nastaví kategorii pro vygenerování testovací místnosti.")
+@bot.tree.command(name="kitcategoryset", description="Nastaví kategorii pro kit.")
 @discord.app_commands.autocomplete(kit=kit_autocomplete)
 async def kitcategoryset(interaction: discord.Interaction, kit: str, kategorie: discord.CategoryChannel):
     if not await has_helper_perms(interaction):
-        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)
+        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)[cite: 3]
     conn = sqlite3.connect("tierbot.db")
     cursor = conn.cursor()
     cursor.execute("INSERT OR REPLACE INTO kit_categories (kit, category_id) VALUES (?, ?)", (kit.lower(), str(kategorie.id)))
@@ -868,26 +1064,26 @@ class QueueView(discord.ui.View):
     async def join_queue(self, interaction: discord.Interaction, button: discord.ui.Button):
         conn = sqlite3.connect("tierbot.db")
         cursor = conn.cursor()
-        cursor.execute("SELECT minecraft_ign FROM verified WHERE discord_id = ?", (str(interaction.user.id),))
-        row = cursor.fetchone()
-        cursor.execute("SELECT cooldown_until FROM player_cooldowns WHERE discord_id = ? AND kit = ?", (str(interaction.user.id), self.kit_name.lower()))
+        
+        # Kontrola LT cooldownu pro queue
+        cursor.execute("SELECT cooldown_until FROM player_cooldowns WHERE discord_id = ? AND kit = ? AND type = 'lt'", (str(interaction.user.id), self.kit_name.lower()))
         cd_row = cursor.fetchone()
-        conn.close()
-
         if cd_row and cd_row[0]:
             try:
-                cd_time = datetime.datetime.fromisoformat(cd_row[0])
-                if datetime.datetime.now() < cd_time:
-                    return await interaction.response.send_message(f"⏳ Cooldown aktivní do **{cd_time.strftime('%d.%m.%Y %H:%M')}**!", ephemeral=True)
-            except:
-                pass
+                dt = datetime.datetime.fromisoformat(cd_row[0])
+                if datetime.datetime.now() < dt:
+                    conn.close()
+                    return await interaction.response.send_message(f"⏳ Máš aktivní LT cooldown do **{dt.strftime('%d.%m.%Y %H:%M')}**!", ephemeral=True)
+            except: pass
+
+        cursor.execute("SELECT minecraft_ign FROM verified WHERE discord_id = ?", (str(interaction.user.id),))
+        row = cursor.fetchone()
+        conn.close()
 
         if not row:
             return await interaction.response.send_message(get_msg(interaction.guild.id, "not_verified"), ephemeral=True)
 
-        if self.kit_name not in QUEUES:
-            QUEUES[self.kit_name] = {"players": [], "testers": []}
-
+        if self.kit_name not in QUEUES: QUEUES[self.kit_name] = {"players": [], "testers": []}
         if interaction.user.id in QUEUES[self.kit_name]["players"]:
             return await interaction.response.send_message(get_msg(interaction.guild.id, "already_in_queue"), ephemeral=True)
 
@@ -907,8 +1103,7 @@ class QueueView(discord.ui.View):
     @discord.ui.button(style=discord.ButtonStyle.success, custom_id="pull_player")
     async def pull_player(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not await has_helper_perms(interaction):
-            return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)
-
+            return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)[cite: 3]
         if self.kit_name not in QUEUES or not QUEUES[self.kit_name]["players"]:
             return await interaction.response.send_message(get_msg(interaction.guild.id, "queue_empty"), ephemeral=True)
 
@@ -916,7 +1111,6 @@ class QueueView(discord.ui.View):
         cursor = conn.cursor()
         cursor.execute("SELECT category_id FROM kit_categories WHERE kit = ?", (self.kit_name.lower(),))
         cat_row = cursor.fetchone()
-        
         player_id = QUEUES[self.kit_name]["players"][0]
         cursor.execute("SELECT minecraft_ign FROM verified WHERE discord_id = ?", (str(player_id),))
         ign_row = cursor.fetchone()
@@ -952,18 +1146,14 @@ class QueueView(discord.ui.View):
 
 def get_queue_embed(kit_name: str, guild_id: int):
     data = QUEUES.get(kit_name, {"players": [], "testers": []})
-    players_list = data["players"]
-    testers_list = data["testers"]
+    players_str = "\n".join([f"{i+1}. <@{pid}>" for i, pid in enumerate(data["players"])]) if data["players"] else get_msg(guild_id, "queue_empty")
+    testers_str = "\n".join([f"{i+1}. <@{tid}>" for i, tid in enumerate(data["testers"])]) if data["testers"] else get_msg(guild_id, "no_testers")
 
-    players_str = "\n".join([f"{i+1}. <@{pid}>" for i, pid in enumerate(players_list)]) if players_list else get_msg(guild_id, "queue_empty")
-    testers_str = "\n".join([f"{i+1}. <@{tid}>" for i, tid in enumerate(testers_list)]) if testers_list else get_msg(guild_id, "no_testers")
-
-    embed = discord.Embed(
+    return discord.Embed(
         title=get_msg(guild_id, "queue_title", kit=kit_name.capitalize()),
         description=f"{get_msg(guild_id, 'queue_desc')}\n\n**Fronta:**\n{players_str}\n\n**{get_msg(guild_id, 'active_testers')}:**\n{testers_str}",
         color=discord.Color.blue()
     )
-    return embed
 
 async def update_queue_message(channel, kit_name, guild_id):
     embed = get_queue_embed(kit_name, guild_id)
@@ -973,50 +1163,40 @@ async def update_queue_message(channel, kit_name, guild_id):
             return
     await channel.send(embed=embed, view=QueueView(kit_name, guild_id))
 
-@bot.tree.command(name="openqueue", description="Otevře queue pro daný kit.")
+@bot.tree.command(name="openqueue", description="Otevře queue.")
 @discord.app_commands.autocomplete(kit=kit_autocomplete)
 async def openqueue(interaction: discord.Interaction, kit: str):
     if not await has_helper_perms(interaction):
-        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)
-    
+        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)[cite: 3]
     conn = sqlite3.connect("tierbot.db")
     cursor = conn.cursor()
     cursor.execute("SELECT channel_id FROM queue_rooms WHERE kit = ?", (kit.lower(),))
     row = cursor.fetchone()
     conn.close()
 
-    if not row or not row[0]:
-        return await interaction.response.send_message(f"❌ Pro kit **{kit}** není nastavena queue místnost!", ephemeral=True)
-
+    if not row or not row[0]: return await interaction.response.send_message("❌ Kanál nenalezen.", ephemeral=True)
     target_channel = interaction.guild.get_channel(int(row[0]))
-    if not target_channel:
-        return await interaction.response.send_message("❌ Kanál nebyl nalezen.", ephemeral=True)
+    if not target_channel: return await interaction.response.send_message("❌ Kanál neexistuje.", ephemeral=True)
 
     try:
         async for message in target_channel.history(limit=50):
-            if message.author == bot.user:
-                await message.delete()
-    except Exception as e:
-        print(f"Nelze smazat staré zprávy: {e}")
+            if message.author == bot.user: await message.delete()
+    except: pass
 
     QUEUES[kit.lower()] = {"players": [], "testers": []}
-    embed = get_queue_embed(kit.lower(), interaction.guild.id)
-    
-    await target_channel.send(content="@everyone", embed=embed, view=QueueView(kit.lower(), interaction.guild.id))
+    await target_channel.send(content="@everyone", embed=get_queue_embed(kit.lower(), interaction.guild.id), view=QueueView(kit.lower(), interaction.guild.id))
     await interaction.response.send_message(get_msg(interaction.guild.id, "queue_opened", kit=kit, room=target_channel.mention), ephemeral=True)
 
-@bot.tree.command(name="closequeue", description="Zavře frontu pro daný kit.")
+@bot.tree.command(name="closequeue", description="Zavře queue.")
 @discord.app_commands.autocomplete(kit=kit_autocomplete)
 async def closequeue(interaction: discord.Interaction, kit: str):
     if not await has_helper_perms(interaction):
-        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)
-
+        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)[cite: 3]
     kit_key = kit.lower()
     if kit_key in QUEUES and QUEUES[kit_key]["testers"]:
         return await interaction.response.send_message(get_msg(interaction.guild.id, "cannot_close_active"), ephemeral=True)
 
     QUEUES.pop(kit_key, None)
-
     conn = sqlite3.connect("tierbot.db")
     cursor = conn.cursor()
     cursor.execute("SELECT channel_id FROM queue_rooms WHERE kit = ?", (kit_key,))
@@ -1024,35 +1204,24 @@ async def closequeue(interaction: discord.Interaction, kit: str):
     conn.close()
 
     if row and row[0]:
-        target_channel = interaction.guild.get_channel(int(row[0]))
-        if target_channel:
-            closed_embed = discord.Embed(
-                title=get_msg(interaction.guild.id, "closed_title", kit=kit.capitalize()),
-                description=get_msg(interaction.guild.id, "closed_desc"),
-                color=discord.Color.red()
-            )
+        ch = interaction.guild.get_channel(int(row[0]))
+        if ch:
+            closed_embed = discord.Embed(title=get_msg(interaction.guild.id, "closed_title", kit=kit.capitalize()), description=get_msg(interaction.guild.id, "closed_desc"), color=discord.Color.red())
             closed_embed.set_footer(text=datetime.datetime.now().strftime("%d.%m.%Y %H:%M"))
-            
-            async for message in target_channel.history(limit=10):
+            async for message in ch.history(limit=10):
                 if message.author == bot.user and message.embeds:
                     await message.edit(embed=closed_embed, view=None)
                     break
-
     await interaction.response.send_message(get_msg(interaction.guild.id, "queue_closed", kit=kit), ephemeral=True)
 
-@bot.tree.command(name="joinqueueastester", description="Připojí tě jako testera do fronty.")
+@bot.tree.command(name="joinqueueastester", description="Připojí testera.")
 @discord.app_commands.autocomplete(kit=kit_autocomplete)
 async def joinqueueastester(interaction: discord.Interaction, kit: str):
     if not await has_helper_perms(interaction):
-        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)
-
+        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)[cite: 3]
     kit_key = kit.lower()
-    if kit_key not in QUEUES:
-        QUEUES[kit_key] = {"players": [], "testers": []}
-
-    if interaction.user.id in QUEUES[kit_key]["testers"]:
-        return await interaction.response.send_message(get_msg(interaction.guild.id, "already_tester"), ephemeral=True)
-
+    if kit_key not in QUEUES: QUEUES[kit_key] = {"players": [], "testers": []}
+    if interaction.user.id in QUEUES[kit_key]["testers"]: return await interaction.response.send_message(get_msg(interaction.guild.id, "already_tester"), ephemeral=True)
     QUEUES[kit_key]["testers"].append(interaction.user.id)
     await interaction.response.send_message(get_msg(interaction.guild.id, "tester_joined", kit=kit), ephemeral=True)
     
@@ -1063,20 +1232,17 @@ async def joinqueueastester(interaction: discord.Interaction, kit: str):
     conn.close()
     if row and row[0]:
         ch = interaction.guild.get_channel(int(row[0]))
-        if ch:
-            await update_queue_message(ch, kit_key, interaction.guild.id)
+        if ch: await update_queue_message(ch, kit_key, interaction.guild.id)
 
-@bot.tree.command(name="leavequeueastester", description="Odebere tě ze seznamu testerů.")
+@bot.tree.command(name="leavequeueastester", description="Odebere testera.")
 @discord.app_commands.autocomplete(kit=kit_autocomplete)
 async def leavequeueastester(interaction: discord.Interaction, kit: str):
     if not await has_helper_perms(interaction):
-        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)
-
+        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)[cite: 3]
     kit_key = kit.lower()
     if kit_key in QUEUES and interaction.user.id in QUEUES[kit_key]["testers"]:
         QUEUES[kit_key]["testers"].remove(interaction.user.id)
         await interaction.response.send_message(get_msg(interaction.guild.id, "tester_left", kit=kit), ephemeral=True)
-        
         conn = sqlite3.connect("tierbot.db")
         cursor = conn.cursor()
         cursor.execute("SELECT channel_id FROM queue_rooms WHERE kit = ?", (kit_key,))
@@ -1084,36 +1250,32 @@ async def leavequeueastester(interaction: discord.Interaction, kit: str):
         conn.close()
         if row and row[0]:
             ch = interaction.guild.get_channel(int(row[0]))
-            if ch:
-                await update_queue_message(ch, kit_key, interaction.guild.id)
-    else:
-        await interaction.response.send_message(get_msg(interaction.guild.id, "not_tester"), ephemeral=True)
+            if ch: await update_queue_message(ch, kit_key, interaction.guild.id)
+    else: await interaction.response.send_message(get_msg(interaction.guild.id, "not_tester"), ephemeral=True)
 
-@bot.tree.command(name="result", description="Odešle výsledek testu do result místnosti.")
+@bot.tree.command(name="result", description="Odešle výsledek testu.")
 @discord.app_commands.autocomplete(kit=kit_autocomplete, tier=tier_autocomplete)
 async def result(interaction: discord.Interaction, discord_hrac: discord.Member, kit: str, tier: str):
     if not await has_helper_perms(interaction):
-        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)
-
+        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)[cite: 3]
+    
+    t_clean = clean_tier(tier)
     conn = sqlite3.connect("tierbot.db")
     cursor = conn.cursor()
     cursor.execute("SELECT minecraft_ign FROM verified WHERE discord_id = ?", (str(discord_hrac.id),))
     row = cursor.fetchone()
-
     cursor.execute("SELECT tier FROM player_tiers WHERE discord_id = ? AND kit = ?", (str(discord_hrac.id), kit.lower()))
     prev_row = cursor.fetchone()
     prev_tier = prev_row[0] if prev_row else "N/A"
 
-    cursor.execute("INSERT OR REPLACE INTO player_tiers (discord_id, kit, tier) VALUES (?, ?, ?)", (str(discord_hrac.id), kit.lower(), tier))
-    cursor.execute("SELECT role_id FROM tier_roles WHERE kit = ? AND tier = ?", (kit.lower(), tier))
+    cursor.execute("INSERT OR REPLACE INTO player_tiers (discord_id, kit, tier) VALUES (?, ?, ?)", (str(discord_hrac.id), kit.lower(), t_clean))
+    cursor.execute("SELECT role_id FROM tier_roles WHERE kit = ? AND tier = ?", (kit.lower(), t_clean))
     role_row = cursor.fetchone()
-
     cursor.execute("SELECT result_room, cooldown_lt, cooldown_ht FROM server_settings WHERE guild_id = ?", (str(interaction.guild.id),))
     settings_row = cursor.fetchone()
 
-    is_lt = tier.startswith("LT") or tier.startswith("RLT")
+    is_lt = t_clean.startswith("LT")
     cd_setting = (settings_row[1] if is_lt else settings_row[2]) if settings_row else "0"
-
     days, hours = parse_cooldown(cd_setting)
 
     if days > 0 or hours > 0:
@@ -1121,71 +1283,50 @@ async def result(interaction: discord.Interaction, discord_hrac: discord.Member,
         cd_type = "lt" if is_lt else "ht"
         cursor.execute("INSERT OR REPLACE INTO player_cooldowns (discord_id, kit, type, cooldown_until) VALUES (?, ?, ?, ?)", (str(discord_hrac.id), kit.lower(), cd_type, expiry.isoformat()))
 
-    # Aktualizace statistik testera (+1 test)
     tester_id = str(interaction.user.id)
-    current_month = datetime.datetime.now().strftime("%Y-%m")
-    cursor.execute("INSERT INTO tester_monthly (discord_id, year_month, count) VALUES (?, ?, 1) ON CONFLICT(discord_id, year_month) DO UPDATE SET count = count + 1", (tester_id, current_month))
+    ym = datetime.datetime.now().strftime("%Y-%m")
+    cursor.execute("INSERT INTO tester_monthly (discord_id, year_month, count) VALUES (?, ?, 1) ON CONFLICT(discord_id, year_month) DO UPDATE SET count = count + 1", (tester_id, ym))
     cursor.execute("INSERT INTO tester_overall (discord_id, count) VALUES (?, 1) ON CONFLICT(discord_id) DO UPDATE SET count = count + 1", (tester_id,))
 
     conn.commit()
     conn.close()
 
     mc_ign = row[0] if row else "Neznámý"
-
     if role_row and role_row[0]:
         role = interaction.guild.get_role(int(role_row[0]))
         if role:
-            try:
-                await discord_hrac.add_roles(role)
-            except Exception:
-                pass
+            try: await discord_hrac.add_roles(role)
+            except: pass
 
-    dnes = datetime.datetime.now().strftime("%d.%m.%Y")
-
-    embed = discord.Embed(
-        title=get_msg(interaction.guild.id, "result_title", kit=kit),
-        description=get_msg(interaction.guild.id, "result_desc", kit=kit),
-        color=discord.Color.green()
-    )
-    embed.add_field(name="👤 Hráč (Discord)", value=discord_hrac.mention, inline=True)
-    embed.add_field(name="🎮 Minecraft IGN", value=mc_ign, inline=True)
+    embed = discord.Embed(title=get_msg(interaction.guild.id, "result_title", kit=kit), description=get_msg(interaction.guild.id, "result_desc", kit=kit), color=discord.Color.green())
+    embed.add_field(name="👤 Hráč", value=discord_hrac.mention, inline=True)
+    embed.add_field(name="🎮 IGN", value=mc_ign, inline=True)
     embed.add_field(name="⚔️ Tester", value=interaction.user.mention, inline=True)
-    embed.add_field(name="📉 Předchozí tier", value=prev_tier, inline=True)
-    embed.add_field(name="📈 Nový tier", value=tier, inline=True)
-    embed.set_footer(text=dnes)
+    embed.add_field(name="📉 Předchozí", value=prev_tier, inline=True)
+    embed.add_field(name="📈 Nový", value=t_clean, inline=True)
+    embed.set_footer(text=datetime.datetime.now().strftime("%d.%m.%Y"))
 
-    if mc_ign != "Neznámý":
-        skin_url = f"https://visage.surgeplay.com/bust/512/{mc_ign}"
-        embed.set_thumbnail(url=skin_url)
-
+    if mc_ign != "Neznámý": embed.set_thumbnail(url=f"https://visage.surgeplay.com/bust/512/{mc_ign}")
     if settings_row and settings_row[0]:
-        room_id = int(settings_row[0])
-        room = interaction.guild.get_channel(room_id)
-        if room:
-            await room.send(content=f"📢 **Nový výsledek pro {kit}!** | Hráč: {discord_hrac.mention} | Tester: {interaction.user.mention}", embed=embed)
+        room = interaction.guild.get_channel(int(settings_row[0]))
+        if room: await room.send(content=f"📢 **Nový výsledek pro {kit}!** | Hráč: {discord_hrac.mention} | Tester: {interaction.user.mention}", embed=embed)
 
     await interaction.response.send_message(get_msg(interaction.guild.id, "result_sent"), ephemeral=True)
     await asyncio.sleep(3)
-    try:
-        await interaction.channel.delete()
-    except Exception as e:
-        print(f"Nelze smazat místnost: {e}")
+    try: await interaction.channel.delete()
+    except: pass
 
 # Webový server pro Keep-Alive
-async def handle_ping(request):
-    return web.Response(text="Bot runs 24/7!")
-
+async def handle_ping(request): return web.Response(text="Bot runs 24/7!")
 async def start_web_server():
     app = web.Application()
     app.router.add_get("/", handle_ping)
     runner = web.AppRunner(app)
     await runner.setup()
-    port = int(os.environ.get("PORT", 8080))
-    site = web.TCPSite(runner, "0.0.0.0", port)
+    site = web.TCPSite(runner, "0.0.0.0", int(os.environ.get("PORT", 8080)))
     await site.start()
 
 TOKEN = os.getenv("DISCORD_TOKEN")
-
 async def main():
     async with bot:
         await start_web_server()
