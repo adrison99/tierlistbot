@@ -227,6 +227,51 @@ async def on_ready():
         print(f"❌ Chyba synchronizace: {e}")
     bot.loop.create_task(tournament_timer_loop())
 
+# --- EDIT USER PŘÍKAZ ---
+@bot.tree.command(name="edituser", description="Upraví profil hráče (Minecraft IGN nebo Tier pro konkrétní kit).")
+@discord.app_commands.autocomplete(kit=kit_autocomplete, novy_tier=tier_autocomplete)
+async def edituser(interaction: discord.Interaction, discord_hrac: discord.Member, nove_ign: str = None, kit: str = None, novy_tier: str = None):
+    if not await has_helper_perms(interaction):
+        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)
+
+    if not nove_ign and not (kit and novy_tier):
+        return await interaction.response.send_message("⚠️ Musíš zadat buď `nove_ign` nebo kombinaci `kit` + `novy_tier`!", ephemeral=True)
+
+    conn = sqlite3.connect("tierbot.db")
+    cursor = conn.cursor()
+    response_parts = []
+
+    # Změna Minecraft IGN
+    if nove_ign:
+        cursor.execute("INSERT OR REPLACE INTO verified (discord_id, minecraft_ign) VALUES (?, ?)", (str(discord_hrac.id), nove_ign))
+        response_parts.append(f"🎮 IGN změněno na **{nove_ign}**")
+
+    # Změna Tieru a udělení role
+    if kit and novy_tier:
+        t_clean = novy_tier.upper().replace("R", "")
+        cursor.execute("INSERT OR REPLACE INTO player_tiers (discord_id, kit, tier) VALUES (?, ?, ?)", (str(discord_hrac.id), kit.lower(), t_clean))
+        
+        cursor.execute("SELECT role_id FROM tier_roles WHERE kit = ? AND tier = ?", (kit.lower(), t_clean))
+        role_row = cursor.fetchone()
+        if role_row and role_row[0]:
+            role = interaction.guild.get_role(int(role_row[0]))
+            if role:
+                try:
+                    await discord_hrac.add_roles(role)
+                    response_parts.append(f"⚔️ Tier pro **{kit.capitalize()}** změněn na **{t_clean}** (Přidána role {role.name})")
+                except:
+                    response_parts.append(f"⚔️ Tier pro **{kit.capitalize()}** změněn na **{t_clean}** (Nepodařilo se dát roli)")
+            else:
+                response_parts.append(f"⚔️ Tier pro **{kit.capitalize()}** změněn na **{t_clean}**")
+        else:
+            response_parts.append(f"⚔️ Tier pro **{kit.capitalize()}** změněn na **{t_clean}**")
+
+    conn.commit()
+    conn.close()
+
+    status_msg = "\n".join(response_parts)
+    await interaction.response.send_message(f"✅ Úspěšně upraven profil pro {discord_hrac.mention}:\n{status_msg}", ephemeral=True)
+
 # --- TURNAJOVÝ SYSTÉM ---
 class TournamentSignupView(discord.ui.View):
     def __init__(self, kit: str):
