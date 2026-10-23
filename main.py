@@ -134,7 +134,8 @@ def init_db():
             language TEXT DEFAULT 'cs',
             cooldown_lt TEXT DEFAULT '0',
             cooldown_ht TEXT DEFAULT '0',
-            ht_ticket_room TEXT
+            ht_ticket_room TEXT,
+            turnaj_result_room TEXT
         )
     """)
     cursor.execute("CREATE TABLE IF NOT EXISTS queue_rooms (kit TEXT PRIMARY KEY, channel_id TEXT)")
@@ -152,6 +153,18 @@ def init_db():
     """)
     cursor.execute("CREATE TABLE IF NOT EXISTS tester_monthly (discord_id TEXT, year_month TEXT, count INTEGER, PRIMARY KEY (discord_id, year_month))")
     cursor.execute("CREATE TABLE IF NOT EXISTS tester_overall (discord_id TEXT PRIMARY KEY, count INTEGER)")
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS tournaments (
+            kit TEXT PRIMARY KEY,
+            tier TEXT,
+            guild_id TEXT,
+            category_id TEXT,
+            signup_channel_id TEXT,
+            end_time TEXT,
+            groups_count INTEGER
+        )
+    """)
+    cursor.execute("CREATE TABLE IF NOT EXISTS tournament_signups (kit TEXT, discord_id TEXT, PRIMARY KEY (kit, discord_id))")
     conn.commit()
     conn.close()
 
@@ -165,6 +178,7 @@ intents.members = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 VALID_TIERS = ["LT5", "HT5", "LT4", "HT4", "LT3", "HT3", "RLT2", "LT2", "RHT2", "HT2", "RLT1", "LT1", "RHT1", "HT1"]
+HT_TIERS_ONLY = ["HT3", "HT2", "HT1"]
 OWNER_IDS = [] 
 
 async def has_helper_perms(ctx: discord.Interaction) -> bool:
@@ -200,6 +214,9 @@ async def kit_autocomplete(interaction: discord.Interaction, current: str):
 async def tier_autocomplete(interaction: discord.Interaction, current: str):
     return [discord.app_commands.Choice(name=tier, value=tier) for tier in VALID_TIERS if current.lower() in tier.lower()]
 
+async def ht_tier_autocomplete(interaction: discord.Interaction, current: str):
+    return [discord.app_commands.Choice(name=tier, value=tier) for tier in HT_TIERS_ONLY if current.lower() in tier.lower()]
+
 @bot.event
 async def on_ready():
     print(f"✅ Bot {bot.user} je online!")
@@ -208,6 +225,284 @@ async def on_ready():
         print(f"🔄 Synchrováno {len(synced)} slash příkazů.")
     except Exception as e:
         print(f"❌ Chyba synchronizace: {e}")
+    bot.loop.create_task(tournament_timer_loop())
+
+# --- TURNAJOVÝ SYSTÉM ---
+class TournamentSignupView(discord.ui.View):
+    def __init__(self, kit: str):
+        super().__init__(timeout=None)
+        self.kit = kit
+
+    @discord.ui.button(label="Přihlásit se", style=discord.ButtonStyle.success, emoji="✅", custom_id="tournament_signup_btn")
+    async def signup_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        user_id = str(interaction.user.id)
+        conn = sqlite3.connect("tierbot.db")
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1 FROM tournament_signups WHERE kit = ? AND discord_id = ?", (self.kit.lower(), user_id))
+        exists = cursor.fetchone()
+        if exists:
+            cursor.execute("DELETE FROM tournament_signups WHERE kit = ? AND discord_id = ?", (self.kit.lower(), user_id))
+            conn.commit()
+            conn.close()
+            return await interaction.response.send_message("❌ Byl jsi odhlášen z turnaje.", ephemeral=True)
+        
+        cursor.execute("INSERT INTO tournament_signups (kit, discord_id) VALUES (?, ?)", (self.kit.lower(), user_id))
+        conn.commit()
+        conn.close()
+        await interaction.response.send_message("✅ Úspěšně přihlášen do turnaje!", ephemeral=True)
+
+async def close_and_draw_tournament(guild: discord.Guild, kit: str):
+    conn = sqlite3.connect("tierbot.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT tier, category_id, signup_channel_id, groups_count FROM tournaments WHERE kit = ?", (kit.lower(),))
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        return
+    
+    tier, cat_id, signup_ch_id, groups_count = row
+    cursor.execute("SELECT discord_id FROM tournament_signups WHERE kit = ?", (kit.lower(),))
+    user_rows = cursor.fetchall()
+    
+    cursor.execute("DELETE FROM tournaments WHERE kit = ?", (kit.lower(),))
+    cursor.execute("DELETE FROM tournament_signups WHERE kit = ?", (kit.lower(),))
+    conn.commit()
+    conn.close()
+
+    players = [guild.get_member(int(r[0])) for r in user_rows if guild.get_member(int(r[0])) is not None]
+    
+    category = guild.get_channel(int(cat_id)) if cat_id else None
+    signup_ch = guild.get_channel(int(signup_ch_id)) if signup_ch_id else None
+
+    if signup_ch:
+        try: await signup_ch.delete()
+        except: pass
+
+    if not players:
+        if category:
+            try: await category.delete()
+            except: pass
+        return
+
+    import random
+    import math
+    random.shuffle(players)
+
+    group_size = math.ceil(len(players) / groups_count) if groups_count > 0 else len(players)
+    groups = []
+    for i in range(0, len(players), group_size):
+        groups.append(players[i:i + group_size])
+
+    for idx, group_players in enumerate(groups, 1):
+        group_channel_name = f"{kit.lower()}-skupina-{idx}"
+        
+        overwrites = {
+            guild.default_role: discord.PermissionOverwrite(view_channel=False)
+        }
+        for p in group_players:
+            overwrites[p] = discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True)
+
+        group_ch = await guild.create_text_channel(
+            name=group_channel_name,
+            category=category if isinstance(category, discord.CategoryChannel) else None,
+            overwrites=overwrites
+        )
+
+        mentions = " ".join([p.mention for p in group_players])
+        
+        matches_text = []
+        for j in range(0, len(group_players) - 1, 2):
+            matches_text.append(f"{group_players[j].mention} vs {group_players[j+1].mention}")
+        if len(group_players) % 2 != 0:
+            matches_text.append(f"{group_players[-1].mention} — čeká na soupeře (lichý počet)")
+
+        players_list_text = "\n".join([f"{n+1}. {p.mention}" for n, p in enumerate(group_players)])
+        matches_str = "\n".join(matches_text) if matches_text else "Žádné zápasy"
+
+        embed = discord.Embed(
+            title=f"🏆 Skupina {idx} — {kit.capitalize()} ({tier})",
+            color=discord.Color.gold()
+        )
+        embed.add_field(name="Tier", value=tier, inline=False)
+        embed.add_field(name="Hráči:", value=players_list_text, inline=False)
+        embed.add_field(name="Zápasy (1v1):", value=matches_str, inline=False)
+        embed.set_footer(text=f"Tester zapíše výsledky po dokončení zápasů pomocí /turnajresult.")
+
+        await group_ch.send(content=mentions, embed=embed)
+
+async def tournament_timer_loop():
+    await bot.wait_until_ready()
+    while not bot.is_closed():
+        now = datetime.datetime.now()
+        conn = sqlite3.connect("tierbot.db")
+        cursor = conn.cursor()
+        cursor.execute("SELECT kit, guild_id, end_time FROM tournaments")
+        rows = cursor.fetchall()
+        conn.close()
+
+        for kit, guild_id, end_time_str in rows:
+            try:
+                end_dt = datetime.datetime.fromisoformat(end_time_str)
+                if now >= end_dt:
+                    guild = bot.get_guild(int(guild_id))
+                    if guild:
+                        await close_and_draw_tournament(guild, kit)
+            except Exception as e:
+                print(f"Chyba v turnajovém timeru pro {kit}: {e}")
+
+        await asyncio.sleep(30)
+
+@bot.tree.command(name="createturnaj", description="Vytvoří nový turnaj pro daný kit a tier.")
+@discord.app_commands.autocomplete(tier=ht_tier_autocomplete, kit=kit_autocomplete)
+async def createturnaj(interaction: discord.Interaction, tier: str, kit: str, hodiny: int, skupiny: int):
+    if not await has_helper_perms(interaction):
+        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)
+
+    guild = interaction.guild
+    kit_key = kit.lower()
+    t_clean = tier.upper().replace("R", "")
+
+    conn = sqlite3.connect("tierbot.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT 1 FROM tournaments WHERE kit = ?", (kit_key,))
+    if cursor.fetchone():
+        conn.close()
+        return await interaction.response.send_message("❌ Pro tento kit již turnaj existuje! Použij nejprve `/deleteturnaj`.", ephemeral=True)
+
+    lower_tier_map = {"HT3": "LT3", "HT2": "LT2", "HT1": "LT1"}
+    target_lower_tier = lower_tier_map.get(t_clean, "LT3")
+
+    cursor.execute("SELECT role_id FROM tier_roles WHERE kit = ? AND tier = ?", (kit_key, target_lower_tier))
+    r_row = cursor.fetchone()
+    conn.close()
+
+    ping_role = guild.get_role(int(r_row[0])) if r_row and r_row[0] else None
+
+    category_name = f"{t_clean}-{kit.capitalize()}-Turnaj"
+    overwrites = {
+        guild.default_role: discord.PermissionOverwrite(view_channel=False)
+    }
+    if ping_role:
+        overwrites[ping_role] = discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True)
+
+    category = await guild.create_category(name=category_name, overwrites=overwrites)
+    signup_ch = await guild.create_text_channel(name=f"{t_clean.lower()}-{kit.lower()}-signup", category=category)
+
+    end_time = datetime.datetime.now() + datetime.timedelta(hours=hodiny)
+
+    conn = sqlite3.connect("tierbot.db")
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO tournaments (kit, tier, guild_id, category_id, signup_channel_id, end_time, groups_count) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                   (kit_key, t_clean, str(guild.id), str(category.id), str(signup_ch.id), end_time.isoformat(), skupiny))
+    conn.commit()
+    conn.close()
+
+    embed = discord.Embed(
+        title=f"🏆 {kit.capitalize()} TURNAJ — {t_clean}",
+        description="Klikni na tlačítko ✅ pro přihlášení do turnaje!",
+        color=discord.Color.gold()
+    )
+    embed.add_field(name="Kit", value=kit.capitalize(), inline=True)
+    embed.add_field(name="Tier", value=t_clean, inline=True)
+    embed.add_field(name="Skupin", value=str(skupiny), inline=True)
+    embed.add_field(name="Deadline", value=f"<t:{int(end_time.timestamp())}:F> (za {hodiny} hodin)", inline=False)
+    embed.set_footer(text=f"Vytvořil: {interaction.user.name}")
+
+    content_ping = ping_role.mention if ping_role else "@everyone"
+    view = TournamentSignupView(kit_key)
+    await signup_ch.send(content=content_ping, embed=embed, view=view)
+
+    await interaction.response.send_message(f"✅ Turnaj pro kit **{kit}** byl úspěšně vytvořen v kanálu {signup_ch.mention}!", ephemeral=True)
+
+@bot.tree.command(name="deleteturnaj", description="Smaže probíhající turnaj a jeho místnosti.")
+@discord.app_commands.autocomplete(kit=kit_autocomplete)
+async def deleteturnaj(interaction: discord.Interaction, kit: str):
+    if not await has_helper_perms(interaction):
+        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)
+
+    kit_key = kit.lower()
+    conn = sqlite3.connect("tierbot.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT category_id FROM tournaments WHERE kit = ?", (kit_key,))
+    row = cursor.fetchone()
+    cursor.execute("DELETE FROM tournaments WHERE kit = ?", (kit_key,))
+    cursor.execute("DELETE FROM tournament_signups WHERE kit = ?", (kit_key,))
+    conn.commit()
+    conn.close()
+
+    if row and row[0]:
+        cat = interaction.guild.get_channel(int(row[0]))
+        if cat and isinstance(cat, discord.CategoryChannel):
+            for ch in cat.channels:
+                try: await ch.delete()
+                except: pass
+            try: await cat.delete()
+            except: pass
+
+    await interaction.response.send_message(f"🗑️ Turnaj pro kit **{kit}** a jeho místnosti byly smazány.", ephemeral=True)
+
+@bot.tree.command(name="turnajresultroomset", description="Nastaví místnost pro posílání výsledků turnajů.")
+async def turnajresultroomset(interaction: discord.Interaction, roomka: discord.TextChannel):
+    if not await has_helper_perms(interaction):
+        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)
+    
+    conn = sqlite3.connect("tierbot.db")
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO server_settings (guild_id, turnaj_result_room) VALUES (?, ?) ON CONFLICT(guild_id) DO UPDATE SET turnaj_result_room = ?", (str(interaction.guild.id), str(roomka.id), str(roomka.id)))
+    conn.commit()
+    conn.close()
+    await interaction.response.send_message(f"✅ Turnajová result místnost nastavena na {roomka.mention}.", ephemeral=True)
+
+@bot.tree.command(name="turnajresult", description="Odešle výsledek turnaje a udělí role hráčům.")
+@discord.app_commands.autocomplete(kit=kit_autocomplete, ziskany_tier=tier_autocomplete)
+async def turnajresult(interaction: discord.Interaction, kit: str, ziskany_tier: str, hrac1: discord.Member, hrac2: discord.Member = None, hrac3: discord.Member = None):
+    if not await has_helper_perms(interaction):
+        return await interaction.response.send_message(get_msg(interaction.guild.id, "no_perms"), ephemeral=True)
+
+    hraci = [h for h in [hrac1, hrac2, hrac3] if h is not None]
+    t_clean = ziskany_tier.upper().replace("R", "")
+    kit_key = kit.lower()
+
+    conn = sqlite3.connect("tierbot.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT turnaj_result_room FROM server_settings WHERE guild_id = ?", (str(interaction.guild.id),))
+    s_row = cursor.fetchone()
+    cursor.execute("SELECT role_id FROM tier_roles WHERE kit = ? AND tier = ?", (kit_key, t_clean))
+    role_row = cursor.fetchone()
+    
+    role = interaction.guild.get_role(int(role_row[0])) if role_row and role_row[0] else None
+
+    ziskava_lines = []
+    for h in hraci:
+        cursor.execute("SELECT tier FROM player_tiers WHERE discord_id = ? AND kit = ?", (str(h.id), kit_key))
+        p_row = cursor.fetchone()
+        prev_tier = p_row[0] if p_row else "LT5"
+        
+        cursor.execute("INSERT OR REPLACE INTO player_tiers (discord_id, kit, tier) VALUES (?, ?, ?)", (str(h.id), kit_key, t_clean))
+        
+        if role:
+            try: await h.add_roles(role)
+            except: pass
+
+        ziskava_lines.append(f"{h.mention} — {prev_tier} → {t_clean}")
+
+    conn.commit()
+    conn.close()
+
+    embed = discord.Embed(
+        title=f"🏆 {kit.capitalize()} TURNAJ",
+        color=discord.Color.gold()
+    )
+    embed.add_field(name="Získává:", value="\n".join(ziskava_lines), inline=False)
+    embed.set_footer(text=f"Zapisovatel: {interaction.user.name}")
+
+    if s_row and s_row[0]:
+        room = interaction.guild.get_channel(int(s_row[0]))
+        if room:
+            ping_content = f"<@&{role.id}>" if role else "@everyone"
+            await room.send(content=ping_content, embed=embed)
+
+    await interaction.response.send_message("✅ Výsledky turnaje byly úspěšně odeslány a role byly uděleny!", ephemeral=True)
 
 # --- DATABÁZE A KOMPLETNÍ ZÁLOHA/OBNOVA ---
 @bot.tree.command(name="databaseinfo", description="Vygeneruje textový kód pro zálohu nastavení, dat hráčů a statistik testerů.")
@@ -219,7 +514,7 @@ async def databaseinfo(interaction: discord.Interaction):
     conn = sqlite3.connect("tierbot.db")
     cursor = conn.cursor()
 
-    cursor.execute("SELECT result_room, helper_role, language, cooldown_lt, cooldown_ht, ht_ticket_room FROM server_settings WHERE guild_id = ?", (guild_id,))
+    cursor.execute("SELECT result_room, helper_role, language, cooldown_lt, cooldown_ht, ht_ticket_room, turnaj_result_room FROM server_settings WHERE guild_id = ?", (guild_id,))
     settings = cursor.fetchone()
 
     cursor.execute("SELECT name FROM kits")
@@ -256,13 +551,14 @@ async def databaseinfo(interaction: discord.Interaction):
 
     lines = []
     if settings:
-        result_room, helper_role, lang, cd_lt, cd_ht, ht_ticket_room = settings
+        result_room, helper_role, lang, cd_lt, cd_ht, ht_ticket_room, t_res_room = settings
         if lang: lines.append(f"lang:{lang}")
         if cd_lt and cd_lt != "0": lines.append(f"cdlt:{cd_lt}")
         if cd_ht and cd_ht != "0": lines.append(f"cdht:{cd_ht}")
         if result_room: lines.append(f"resultroom:{result_room}")
         if helper_role: lines.append(f"helperrole:{helper_role}")
         if ht_ticket_room: lines.append(f"htticketroom:{ht_ticket_room}")
+        if t_res_room: lines.append(f"turnajresultroom:{t_res_room}")
 
     for kit in kits:
         lines.append(f"kit:{kit}")
@@ -338,6 +634,9 @@ async def database(interaction: discord.Interaction, kod: str):
             count += 1
         elif key == "htticketroom":
             cursor.execute("INSERT INTO server_settings (guild_id, ht_ticket_room) VALUES (?, ?) ON CONFLICT(guild_id) DO UPDATE SET ht_ticket_room = ?", (guild_id, val, val))
+            count += 1
+        elif key == "turnajresultroom":
+            cursor.execute("INSERT INTO server_settings (guild_id, turnaj_result_room) VALUES (?, ?) ON CONFLICT(guild_id) DO UPDATE SET turnaj_result_room = ?", (guild_id, val, val))
             count += 1
         elif key == "kit":
             cursor.execute("INSERT OR IGNORE INTO kits (name) VALUES (?)", (val.lower(),))
@@ -1104,14 +1403,15 @@ async def result(interaction: discord.Interaction, discord_hrac: discord.Member,
     prev_row = cursor.fetchone()
     prev_tier = prev_row[0] if prev_row else "N/A"
 
-    cursor.execute("INSERT OR REPLACE INTO player_tiers (discord_id, kit, tier) VALUES (?, ?, ?)", (str(discord_hrac.id), kit.lower(), tier))
-    cursor.execute("SELECT role_id FROM tier_roles WHERE kit = ? AND tier = ?", (kit.lower(), tier))
+    t_clean = tier.upper().replace("R", "")
+    cursor.execute("INSERT OR REPLACE INTO player_tiers (discord_id, kit, tier) VALUES (?, ?, ?)", (str(discord_hrac.id), kit.lower(), t_clean))
+    cursor.execute("SELECT role_id FROM tier_roles WHERE kit = ? AND tier = ?", (kit.lower(), t_clean))
     role_row = cursor.fetchone()
 
     cursor.execute("SELECT result_room, cooldown_lt, cooldown_ht FROM server_settings WHERE guild_id = ?", (str(interaction.guild.id),))
     settings_row = cursor.fetchone()
 
-    is_lt = tier.startswith("LT") or tier.startswith("RLT")
+    is_lt = t_clean.startswith("LT")
     cd_setting = (settings_row[1] if is_lt else settings_row[2]) if settings_row else "0"
 
     days, hours = parse_cooldown(cd_setting)
@@ -1121,7 +1421,6 @@ async def result(interaction: discord.Interaction, discord_hrac: discord.Member,
         cd_type = "lt" if is_lt else "ht"
         cursor.execute("INSERT OR REPLACE INTO player_cooldowns (discord_id, kit, type, cooldown_until) VALUES (?, ?, ?, ?)", (str(discord_hrac.id), kit.lower(), cd_type, expiry.isoformat()))
 
-    # Aktualizace statistik testera (+1 test)
     tester_id = str(interaction.user.id)
     current_month = datetime.datetime.now().strftime("%Y-%m")
     cursor.execute("INSERT INTO tester_monthly (discord_id, year_month, count) VALUES (?, ?, 1) ON CONFLICT(discord_id, year_month) DO UPDATE SET count = count + 1", (tester_id, current_month))
@@ -1151,7 +1450,7 @@ async def result(interaction: discord.Interaction, discord_hrac: discord.Member,
     embed.add_field(name="🎮 Minecraft IGN", value=mc_ign, inline=True)
     embed.add_field(name="⚔️ Tester", value=interaction.user.mention, inline=True)
     embed.add_field(name="📉 Předchozí tier", value=prev_tier, inline=True)
-    embed.add_field(name="📈 Nový tier", value=tier, inline=True)
+    embed.add_field(name="📈 Nový tier", value=t_clean, inline=True)
     embed.set_footer(text=dnes)
 
     if mc_ign != "Neznámý":
