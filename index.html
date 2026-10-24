@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TierBot - Minecraft Tier List & Turnaje</title>
+    <title>TierBot - Přehled Příkazů</title>
     <style>
         :root {
             --bg-color: #0d0614;
@@ -16,16 +16,17 @@
         }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: var(--bg-color); color: var(--text-main); line-height: 1.6; }
-        header { display: flex; justify-content: space-between; align-items: center; padding: 20px 50px; background: rgba(13, 6, 20, 0.8); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border-color); position: sticky; top: 0; z-index: 100; }
+        
+        header { display: flex; justify-content: space-between; align-items: center; padding: 20px 50px; background: rgba(13, 6, 20, 0.85); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border-color); position: sticky; top: 0; z-index: 100; }
         .logo { font-size: 1.5rem; font-weight: bold; color: var(--purple-primary); text-transform: uppercase; letter-spacing: 1px; }
         nav a { color: var(--text-muted); text-decoration: none; margin-left: 25px; font-weight: 500; transition: color 0.2s; }
         nav a:hover { color: var(--text-main); }
         .discord-btn { background-color: var(--purple-primary); color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600; transition: background 0.2s; }
         .discord-btn:hover { background-color: var(--purple-hover); }
         
-        .hero { text-align: center; padding: 100px 20px 60px 20px; max-width: 800px; margin: 0 auto; }
-        .hero h1 { font-size: 3.5rem; margin-bottom: 20px; color: white; }
-        .hero p { font-size: 1.2rem; color: var(--text-muted); margin-bottom: 30px; }
+        .hero { text-align: center; padding: 80px 20px 40px 20px; max-width: 800px; margin: 0 auto; }
+        .hero h1 { font-size: 3.2rem; margin-bottom: 15px; color: white; }
+        .hero p { font-size: 1.1rem; color: var(--text-muted); margin-bottom: 25px; }
         
         .btn-group { display: flex; justify-content: center; gap: 15px; }
         .btn-primary { background-color: var(--purple-primary); color: white; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; box-shadow: 0 0 20px rgba(139, 92, 246, 0.4); transition: transform 0.2s, background 0.2s; }
@@ -33,14 +34,14 @@
         .btn-secondary { background-color: var(--card-bg); color: var(--text-main); border: 1px solid var(--border-color); padding: 12px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; transition: background 0.2s; }
         .btn-secondary:hover { background-color: #22113b; }
 
-        .container { max-width: 1000px; margin: 0 auto; padding: 40px 20px; }
+        .container { max-width: 1100px; margin: 0 auto; padding: 40px 20px; }
         h2 { font-size: 2rem; margin-bottom: 30px; text-align: center; color: white; }
         
-        .commands-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
-        .command-card { background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 25px; transition: border-color 0.2s; }
-        .command-card:hover { border-color: var(--purple-primary); }
-        .command-card code { background: #2e1065; color: #ddd6fe; padding: 4px 8px; border-radius: 4px; font-family: monospace; font-size: 1.1rem; }
-        .command-card p { margin-top: 12px; color: var(--text-muted); font-size: 0.95rem; }
+        .commands-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
+        .command-card { background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 22px; transition: border-color 0.2s, transform 0.2s; }
+        .command-card:hover { border-color: var(--purple-primary); transform: translateY(-3px); }
+        .command-card code { background: #2e1065; color: #ddd6fe; padding: 5px 10px; border-radius: 6px; font-family: monospace; font-size: 1.05rem; display: inline-block; word-break: break-word; }
+        .command-card p { margin-top: 12px; color: var(--text-muted); font-size: 0.95rem; line-height: 1.5; }
         
         footer { text-align: center; padding: 40px; color: var(--text-muted); border-top: 1px solid var(--border-color); margin-top: 60px; font-size: 0.9rem; }
     </style>
@@ -52,13 +53,13 @@
         <nav>
             <a href="#uvod">Úvod</a>
             <a href="#commandy">Příkazy</a>
-            <a href="https://discord.com" target="_blank" class="discord-btn">Discord</a>
+            <a href="https://discord.com" target="_blank" class="discord-btn">Discord Server</a>
         </nav>
     </header>
 
     <section class="hero" id="uvod">
-        <h1>Nejlepší Minecraft Tier List Bot</h1>
-        <p>Automatické fronty, turnajový systém s 1v1 bracketingem, přehledné testy a 24/7 provoz na Renderu.</p>
+        <h1>Kompletní Přehled Příkazů</h1>
+        <p>Všechny dostupné příkazy pro správu tierů, čekacích front, turnajů a testování na vašem serveru.</p>
         <div class="btn-group">
             <a href="#commandy" class="btn-primary">Prohlédnout Příkazy</a>
             <a href="https://github.com/adrison99/tierlistbot" target="_blank" class="btn-secondary">GitHub Repozitář</a>
@@ -66,37 +67,169 @@
     </section>
 
     <div class="container" id="commandy">
-        <h2>Seznam Příkazů</h2>
+        <h2>Seznam Všech Příkazů</h2>
         <div class="commands-grid">
+
             <div class="command-card">
-                <code>/verify &lt;ign&gt;</code>
+                <code>/verify &lt;minecraft_ign&gt;</code>
                 <p>Propojí tvůj Discord účet s tvým Minecraft nickem (IGN).</p>
             </div>
+
+            <div class="command-card">
+                <code>/databaseinfo</code>
+                <p>Vygeneruje textový záložní kód obsahující kompletní nastavení serveru, data hráčů a statistik testerů. Bot ti ho pošle do soukromých zpráv (DM).</p>
+            </div>
+
+            <div class="command-card">
+                <code>/database &lt;kod&gt;</code>
+                <p>Hromadně obnoví veškeré nastavení, kity, role a data hráčů ze záložního kódu, který získáš z /databaseinfo.</p>
+            </div>
+
+            <div class="command-card">
+                <code>/language &lt;jazyk&gt;</code>
+                <p>Změní výchozí jazyk bota pro daný server (na výběr je Čeština, angličtina, slovenština atd.).</p>
+            </div>
+
+            <div class="command-card">
+                <code>/helperoleset &lt;role&gt;</code>
+                <p>Nastaví hlavní helper/tester roli, která dává uživatelům oprávnění spouštět testy a spravovat bota.</p>
+            </div>
+
+            <div class="command-card">
+                <code>/resultroomset &lt;roomka&gt;</code>
+                <p>Nastaví kanál, kam se budou automaticky odesílat oficiální výsledky úspěšných tier testů.</p>
+            </div>
+
+            <div class="command-card">
+                <code>/turnajresultroomset &lt;roomka&gt;</code>
+                <p>Nastaví speciální kanál pro odesílání výsledků turnajů.</p>
+            </div>
+
+            <div class="command-card">
+                <code>/hticketset &lt;roomka&gt;</code>
+                <p>Nastaví místnost, kde se zobrazí interaktivní zpráva pro vytváření HT ticketů.</p>
+            </div>
+
+            <div class="command-card">
+                <code>/kitcategoryset &lt;kit&gt; &lt;kategorie&gt;</code>
+                <p>Sváže daný kit s konkrétní Discord kategorií, kam se budou vytvářet testovací místnosti.</p>
+            </div>
+
+            <div class="command-card">
+                <code>/categorysetforhtticket &lt;kit&gt; &lt;kategorie&gt;</code>
+                <p>Nastaví kategorii, do které se budou zakládat místnosti pro HT tickety daného kitu.</p>
+            </div>
+
+            <div class="command-card">
+                <code>/queueroomset &lt;roomka&gt; &lt;kit&gt;</code>
+                <p>Propojí konkrétní textový kanál s frontou (queue) pro vybraný kit.</p>
+            </div>
+
+            <div class="command-card">
+                <code>/createkit &lt;jmeno_kitu&gt;</code>
+                <p>Přidá nový kit do databáze (např. sword, axe, netherite).</p>
+            </div>
+
+            <div class="command-card">
+                <code>/removekit &lt;kit&gt;</code>
+                <p>Odstraní zvolený kit z databáze.</p>
+            </div>
+
+            <div class="command-card">
+                <code>/tieroleset &lt;kit&gt; &lt;tier&gt; &lt;role&gt;</code>
+                <p>Propojí konkrétní kit a tier (např. HT3 Sword) s Discord rolí, která se hráči po úspěšném testu automaticky udělí.</p>
+            </div>
+
+            <div class="command-card">
+                <code>/createturnaj &lt;tier&gt; &lt;kit&gt; &lt;hodiny&gt; &lt;skupiny&gt;</code>
+                <p>Vytvoří turnajovou kategorii a přihlašovací místnost s tlačítkem. Automaticky pingne support roli o tier níže. Po uplynutí zadaného počtu hodin turnaj sám uzavře a vylosuje hráče do skupin a 1v1 zápasů/bracketů.</p>
+            </div>
+
+            <div class="command-card">
+                <code>/deleteturnaj &lt;kit&gt;</code>
+                <p>Smaže probíhající turnaj a všechny jeho vytvořené místnosti a kategorie pro daný kit.</p>
+            </div>
+
+            <div class="command-card">
+                <code>/edituser &lt;discord_hrac&gt; [nove_ign] [kit] [novy_tier]</code>
+                <p>Umožňuje ručně upravit profil hráče – změnit jeho propojené Minecraft IGN nebo mu napřímo přepsat tier pro zvolený kit (včetně automatického přiřazení příslušné role).</p>
+            </div>
+
+            <div class="command-card">
+                <code>/cooldownset &lt;typ&gt; &lt;cas&gt;</code>
+                <p>Nastaví globální cooldown (např. 7d nebo 24h) pro LT nebo HT tiery.</p>
+            </div>
+
+            <div class="command-card">
+                <code>/removecooldown &lt;kit&gt; &lt;discord_hrac&gt; &lt;typ&gt;</code>
+                <p>Zruší aktivní cooldown danému hráči na vybraný kit.</p>
+            </div>
+
             <div class="command-card">
                 <code>/openqueue &lt;kit&gt;</code>
-                <p>Otevře čekací frontu pro daný kit s interaktivními tlačítky.</p>
+                <p>Otevře čekací frontu (waitlist) pro daný kit v nastaveném kanálu a pošle zprávu s tlačítky pro připojení/odpojení.</p>
             </div>
+
             <div class="command-card">
-                <code>/createturnaj</code>
-                <p>Vytvoří turnajovou kategorii, signup místnost a automaticky losuje 1v1 zápasy.</p>
+                <code>/closequeue &lt;kit&gt;</code>
+                <p>Uzavře frontu pro daný kit.</p>
             </div>
+
             <div class="command-card">
-                <code>/result &lt;hráč&gt; &lt;kit&gt; &lt;tier&gt;</code>
-                <p>Zaznamená výsledek testu, přidělí roli a pošle hlášení do result místnosti.</p>
+                <code>/joinqueueastester &lt;kit&gt;</code>
+                <p>Zaregistruje tě jako aktivního testera do fronty daného kitu.</p>
             </div>
+
             <div class="command-card">
-                <code>/turnajresult</code>
-                <p>Vyhodnotí turnaj, odešle špičkový výsledek a rozdá výhercům role.</p>
+                <code>/leavequeueastester &lt;kit&gt;</code>
+                <p>Odhlásí tě ze seznamu aktivních testerů dané fronty.</p>
             </div>
+
             <div class="command-card">
-                <code>/cooldown &lt;hráč&gt;</code>
-                <p>Zobrazí všechny aktivní LT a HT cooldowny daného hráče.</p>
+                <code>/result &lt;discord_hrac&gt; &lt;kit&gt; &lt;tier&gt;</code>
+                <p>Zápis výsledku klasického tier testu. Odešle hlášení do result místnosti, přidělí hráči novou roli, aktualizuje statistiky testera a po chvíli testovací místnost smaže.</p>
             </div>
+
+            <div class="command-card">
+                <code>/turnajresult &lt;kit&gt; &lt;ziskany_tier&gt; &lt;hrac1&gt; [hrac2] [hrac3]</code>
+                <p>Odešle výsledky z turnaje do nastavené result místnosti, udělí hráčům odpovídající role a aktualizuje jejich tiery v databázi.</p>
+            </div>
+
+            <div class="command-card">
+                <code>/hticketsend</code>
+                <p>Odešle do nastavené místnosti interaktivní zprávu s výběrem kitů, pomocí které si hráči mohou otevírat HT tickety.</p>
+            </div>
+
+            <div class="command-card">
+                <code>/close</code>
+                <p>Zavře aktuální testovací nebo ticketovou místnost a nastaví hráči cooldown.</p>
+            </div>
+
+            <div class="command-card">
+                <code>/add &lt;uzivatel&gt;</code>
+                <p>Přidá dalšího uživatele/testera do probíhajícího ticketu nebo testovací místnosti.</p>
+            </div>
+
+            <div class="command-card">
+                <code>/remove &lt;uzivatel&gt;</code>
+                <p>Odebere uživateli přístup z ticketu/místnosti.</p>
+            </div>
+
+            <div class="command-card">
+                <code>/cooldown &lt;player&gt;</code>
+                <p>Zobrazí výpis všech aktivních cooldownů vybraného hráče.</p>
+            </div>
+
+            <div class="command-card">
+                <code>/testerleaderboard &lt;obdobi&gt;</code>
+                <p>Zobrazí žebříček nejaktivnějších testerů za tento měsíc, minulý měsíc nebo celkově.</p>
+            </div>
+
         </div>
     </div>
 
     <footer>
-        <p>&copy; 2026 TierBot. Všechna práva vyhrazena. Vytvořeno pro kompetitivní Minecraft server.</p>
+        <p>&copy; 2026 TierBot. Všechna práva vyhrazena.</p>
     </footer>
 
 </body>
