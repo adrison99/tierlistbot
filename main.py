@@ -1515,13 +1515,17 @@ async def result(interaction: discord.Interaction, discord_hrac: discord.Member,
     except Exception as e:
         print(f"Nelze smazat místnost: {e}")
 
-# Webový server pro Keep-Alive
-async def handle_ping(request):
+# Webový server pro Keep-Alive a zobrazení webu (index.html ve stejné složce)
+async def handle_web(request):
+    if os.path.exists("index.html"):
+        with open("index.html", "r", encoding="utf-8") as f:
+            content = f.read()
+        return web.Response(text=content, content_type="text/html")
     return web.Response(text="Bot runs 24/7!")
 
 async def start_web_server():
     app = web.Application()
-    app.router.add_get("/", handle_ping)
+    app.router.add_get("/", handle_web)
     runner = web.AppRunner(app)
     await runner.setup()
     port = int(os.environ.get("PORT", 8080))
