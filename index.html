@@ -26,10 +26,13 @@
         .logo-img { height: 45px; border-radius: 8px; filter: drop-shadow(0 0 8px var(--neon-cyan)); }
         .logo-text { font-size: 1.4rem; font-weight: bold; background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-transform: uppercase; letter-spacing: 1.5px; }
         
-        nav { display: flex; align-items: center; }
-        nav a { color: var(--text-muted); text-decoration: none; margin-left: 20px; font-weight: 600; font-size: 0.95rem; transition: color 0.2s, text-shadow 0.2s; }
+        nav { display: flex; align-items: center; gap: 15px; }
+        nav a { color: var(--text-muted); text-decoration: none; font-weight: 600; font-size: 0.95rem; transition: color 0.2s, text-shadow 0.2s; }
         nav a:hover { color: var(--neon-cyan); text-shadow: 0 0 10px var(--neon-cyan); }
         
+        .invite-btn { background: linear-gradient(135deg, #00f0ff, #b026ff); color: white !important; padding: 8px 16px; border-radius: 6px; font-weight: bold; text-shadow: none; box-shadow: 0 0 12px rgba(0, 240, 255, 0.3); transition: transform 0.2s; }
+        .invite-btn:hover { transform: translateY(-2px); text-shadow: none !important; }
+
         .login-btn { background: linear-gradient(135deg, #5865F2, #7289DA); color: white !important; padding: 8px 16px; border-radius: 6px; box-shadow: 0 0 15px rgba(88, 101, 242, 0.4); }
         .login-btn:hover { opacity: 0.9; text-shadow: none !important; }
 
@@ -44,6 +47,9 @@
         .hero h1 { font-size: 3.2rem; margin-bottom: 15px; background: linear-gradient(135deg, #ffffff 30%, var(--neon-cyan)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 0 30px rgba(0, 240, 255, 0.2); }
         .hero p { font-size: 1.15rem; color: var(--text-muted); line-height: 1.7; }
         .hero p code { background: rgba(176, 38, 255, 0.15); color: #e879f9; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(176, 38, 255, 0.3); font-family: monospace; }
+
+        .main-invite-btn { background: linear-gradient(135deg, #00f0ff, #b026ff); color: white; padding: 14px 28px; border-radius: 8px; font-weight: bold; text-decoration: none; font-size: 1.1rem; box-shadow: 0 0 20px rgba(0, 240, 255, 0.4); display: inline-block; margin-top: 25px; transition: transform 0.2s, box-shadow 0.2s; }
+        .main-invite-btn:hover { transform: translateY(-3px); box-shadow: 0 0 30px rgba(176, 38, 255, 0.6); }
 
         .container { max-width: 1100px; margin: 0 auto; padding: 20px 20px 60px 20px; }
         
@@ -74,6 +80,7 @@
             <a href="#turnaj">Turnaje</a>
             <a href="#testing">Testing & Tickety</a>
             <a href="#hracske">Statistiky</a>
+            <a href="https://discord.com/oauth2/authorize?client_id=1553682161482207292&permissions=8&integration_type=0&scope=applications.commands+bot" target="_blank" class="invite-btn">➕ Přidat Bota</a>
             <a href="/login" class="login-btn">🎮 Přihlásit se</a>
         </nav>
     </header>
@@ -82,6 +89,10 @@
         <img src="logo.png" alt="TierList Bot Logo Banner" class="hero-logo" onerror="this.style.display='none'">
         <h1>TIERLIST BOT</h1>
         <p>Máš tierlist, ale nemáš bota? Toto je bot pro tebe! V tomto botovi najdeš vše – např. systém queue (<code>/openqueue</code>), turnaje (<code>/createturnaj</code>), HT tickety (<code>/add</code>, <code>/remove</code>) a mnohem víc! Scrollni dolů a najdeš všechny commandy!</p>
+        
+        <div>
+            <a href="https://discord.com/oauth2/authorize?client_id=1553682161482207292&permissions=8&integration_type=0&scope=applications.commands+bot" target="_blank" class="main-invite-btn">🚀 Přidat Bota na Discord</a>
+        </div>
     </section>
 
     <div class="container">
@@ -136,8 +147,7 @@
         <!-- 📊 HRÁČSKÉ PŘÍKAZY & STATISTIKY -->
         <div class="section-title" id="hracske">📊 Hráčské Příkazy & Statistiky</div>
         <div class="commands-grid">
-            <div class="command-card"><code>/verify &lt;minecraft_ign&gt;</code><p>Propojí tvůj Discord účet s tvým Minecraft nickem (IGN).</p>
-            </div>
+            <div class="command-card"><code>/verify &lt;minecraft_ign&gt;</code><p>Propojí tvůj Discord účet s tvým Minecraft nickem (IGN).</p></div>
             <div class="command-card"><code>/cooldown &lt;player&gt;</code><p>Zobrazí přehledný výpis všech aktivních LT a HT cooldownů zvoleného hráče.</p></div>
             <div class="command-card"><code>/testerleaderboard &lt;obdobi&gt;</code><p>Zobrazí žebříček nejaktivnějších testerů za tento měsíc, minulý měsíc nebo celkově.</p></div>
         </div>
