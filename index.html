@@ -26,8 +26,12 @@
         .logo-img { height: 45px; border-radius: 8px; filter: drop-shadow(0 0 8px var(--neon-cyan)); }
         .logo-text { font-size: 1.4rem; font-weight: bold; background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-transform: uppercase; letter-spacing: 1.5px; }
         
+        nav { display: flex; align-items: center; }
         nav a { color: var(--text-muted); text-decoration: none; margin-left: 20px; font-weight: 600; font-size: 0.95rem; transition: color 0.2s, text-shadow 0.2s; }
         nav a:hover { color: var(--neon-cyan); text-shadow: 0 0 10px var(--neon-cyan); }
+        
+        .login-btn { background: linear-gradient(135deg, #5865F2, #7289DA); color: white !important; padding: 8px 16px; border-radius: 6px; box-shadow: 0 0 15px rgba(88, 101, 242, 0.4); }
+        .login-btn:hover { opacity: 0.9; text-shadow: none !important; }
 
         .hero { text-align: center; padding: 60px 20px 40px 20px; max-width: 850px; margin: 0 auto; }
         .hero-logo { max-width: 320px; height: auto; margin-bottom: 25px; filter: drop-shadow(0 0 25px var(--glow-purple)) drop-shadow(0 0 10px var(--glow-cyan)); animation: float 4s ease-in-out infinite; }
@@ -70,6 +74,7 @@
             <a href="#turnaj">Turnaje</a>
             <a href="#testing">Testing & Tickety</a>
             <a href="#hracske">Statistiky</a>
+            <a href="/login" class="login-btn">🎮 Přihlásit se</a>
         </nav>
     </header>
 
@@ -80,161 +85,64 @@
     </section>
 
     <div class="container">
-
         <!-- ⚙️ NASTAVOVACÍ PŘÍKAZY -->
         <div class="section-title" id="nastavovaci">⚙️ Nastavovací Příkazy</div>
         <div class="commands-grid">
-            <div class="command-card">
-                <code>/databaseinfo</code>
-                <p>Vygeneruje textový záložní kód obsahující kompletní nastavení serveru, data hráčů a statistiky testerů. Bot ti ho pošle do soukromých zpráv (DM).</p>
-            </div>
-            <div class="command-card">
-                <code>/database &lt;kod&gt;</code>
-                <p>Hromadně obnoví veškeré nastavení, kity, role a data hráčů ze záložního kódu z /databaseinfo.</p>
-            </div>
-            <div class="command-card">
-                <code>/language &lt;jazyk&gt;</code>
-                <p>Změní výchozí jazyk bota pro daný server (např. Čeština, Angličtina, Slovenčina atd.).</p>
-            </div>
-            <div class="command-card">
-                <code>/helperoleset &lt;role&gt;</code>
-                <p>Nastaví hlavní helper/tester roli, která dává uživatelům oprávnění spouštět testy a spravovat bota.</p>
-            </div>
-            <div class="command-card">
-                <code>/resultroomset &lt;roomka&gt;</code>
-                <p>Nastaví kanál, kam se budou automaticky odesílat oficiální výsledky úspěšných tier testů.</p>
-            </div>
-            <div class="command-card">
-                <code>/turnajresultroomset &lt;roomka&gt;</code>
-                <p>Nastaví speciální kanál pro odesílání oficiálních výsledků turnajů.</p>
-            </div>
-            <div class="command-card">
-                <code>/hticketset &lt;roomka&gt;</code>
-                <p>Nastaví místnost, kde se zobrazí interaktivní zpráva pro vytváření HT ticketů.</p>
-            </div>
-            <div class="command-card">
-                <code>/kitcategoryset &lt;kit&gt; &lt;kategorie&gt;</code>
-                <p>Sváže daný kit s konkrétní Discord kategorií, kam se budou generovat testovací místnosti.</p>
-            </div>
-            <div class="command-card">
-                <code>/categorysetforhtticket &lt;kit&gt; &lt;kategorie&gt;</code>
-                <p>Nastaví kategorii, do které se budou zakládat místnosti pro HT tickety daného kitu.</p>
-            </div>
-            <div class="command-card">
-                <code>/queueroomset &lt;roomka&gt; &lt;kit&gt;</code>
-                <p>Propojí konkrétní textový kanál s čekací frontou (queue) pro vybraný kit.</p>
-            </div>
-            <div class="command-card">
-                <code>/createkit &lt;jmeno_kitu&gt;</code>
-                <p>Přidá nový kit do databáze bota (např. sword, axe, netherite).</p>
-            </div>
-            <div class="command-card">
-                <code>/removekit &lt;kit&gt;</code>
-                <p>Odstraní zvolený kit z databáze.</p>
-            </div>
-            <div class="command-card">
-                <code>/tieroleset &lt;kit&gt; &lt;tier&gt; &lt;role&gt;</code>
-                <p>Propojí konkrétní kit a tier (např. HT3 Sword) s Discord rolí, která se hráči po testu automaticky přidělí.</p>
-            </div>
-            <div class="command-card">
-                <code>/cooldownset &lt;typ&gt; &lt;cas&gt;</code>
-                <p>Nastaví globální cooldown (např. 7d nebo 24h) pro LT nebo HT tiery.</p>
-            </div>
+            <div class="command-card"><code>/databaseinfo</code><p>Vygeneruje textový záložní kód obsahující kompletní nastavení serveru, data hráčů a statistiky testerů. Bot ti ho pošle do soukromých zpráv (DM).</p></div>
+            <div class="command-card"><code>/database &lt;kod&gt;</code><p>Hromadně obnoví veškeré nastavení, kity, role a data hráčů ze záložního kódu z /databaseinfo.</p></div>
+            <div class="command-card"><code>/language &lt;jazyk&gt;</code><p>Změní výchozí jazyk bota pro daný server (např. Čeština, Angličtina, Slovenčina atd.).</p></div>
+            <div class="command-card"><code>/helperoleset &lt;role&gt;</code><p>Nastaví hlavní helper/tester roli, která dává uživatelům oprávnění spouštět testy a spravovat bota.</p></div>
+            <div class="command-card"><code>/resultroomset &lt;roomka&gt;</code><p>Nastaví kanál, kam se budou automaticky odesílat oficiální výsledky úspěšných tier testů.</p></div>
+            <div class="command-card"><code>/turnajresultroomset &lt;roomka&gt;</code><p>Nastaví speciální kanál pro odesílání oficiálních výsledků turnajů.</p></div>
+            <div class="command-card"><code>/hticketset &lt;roomka&gt;</code><p>Nastaví místnost, kde se zobrazí interaktivní zpráva pro vytváření HT ticketů.</p></div>
+            <div class="command-card"><code>/kitcategoryset &lt;kit&gt; &lt;kategorie&gt;</code><p>Sváže daný kit s konkrétní Discord kategorií, kam se budou generovat testovací místnosti.</p></div>
+            <div class="command-card"><code>/categorysetforhtticket &lt;kit&gt; &lt;kategorie&gt;</code><p>Nastaví kategorii, do které se budou zakládat místnosti pro HT tickety daného kitu.</p></div>
+            <div class="command-card"><code>/queueroomset &lt;roomka&gt; &lt;kit&gt;</code><p>Propojí konkrétní textový kanál s čekací frontou (queue) pro vybraný kit.</p></div>
+            <div class="command-card"><code>/createkit &lt;jmeno_kitu&gt;</code><p>Přidá nový kit do databáze bota (např. sword, axe, netherite).</p></div>
+            <div class="command-card"><code>/removekit &lt;kit&gt;</code><p>Odstraní zvolený kit z databáze.</p></div>
+            <div class="command-card"><code>/tieroleset &lt;kit&gt; &lt;tier&gt; &lt;role&gt;</code><p>Propojí konkrétní kit a tier (např. HT3 Sword) s Discord rolí, která se hráči po testu automaticky přidělí.</p></div>
+            <div class="command-card"><code>/cooldownset &lt;typ&gt; &lt;cas&gt;</code><p>Nastaví globální cooldown (např. 7d nebo 24h) pro LT nebo HT tiery.</p></div>
         </div>
 
         <!-- 📝 QUEUE PŘÍKAZY -->
         <div class="section-title" id="queue">📝 Queue Příkazy</div>
         <div class="commands-grid">
-            <div class="command-card">
-                <code>/openqueue &lt;kit&gt;</code>
-                <p>Otevře čekací frontu (waitlist) pro daný kit v nastaveném kanálu a pošle interaktivní tlačítka.</p>
-            </div>
-            <div class="command-card">
-                <code>/closequeue &lt;kit&gt;</code>
-                <p>Uzavře frontu pro daný kit.</p>
-            </div>
-            <div class="command-card">
-                <code>/joinqueueastester &lt;kit&gt;</code>
-                <p>Zaregistruje tě jako aktivního testera do fronty daného kitu.</p>
-            </div>
-            <div class="command-card">
-                <code>/leavequeueastester &lt;kit&gt;</code>
-                <p>Odhlásí tě ze seznamu aktivních testerů dané fronty.</p>
-            </div>
+            <div class="command-card"><code>/openqueue &lt;kit&gt;</code><p>Otevře čekací frontu (waitlist) pro daný kit v nastaveném kanálu a pošle interaktivní tlačítka.</p></div>
+            <div class="command-card"><code>/closequeue &lt;kit&gt;</code><p>Uzavře frontu pro daný kit.</p></div>
+            <div class="command-card"><code>/joinqueueastester &lt;kit&gt;</code><p>Zaregistruje tě jako aktivního testera do fronty daného kitu.</p></div>
+            <div class="command-card"><code>/leavequeueastester &lt;kit&gt;</code><p>Odhlásí tě ze seznamu aktivních testerů dané fronty.</p></div>
         </div>
 
         <!-- 🏆 TURNAJ PŘÍKAZY -->
         <div class="section-title" id="turnaj">🏆 Turnaj Příkazy</div>
         <div class="commands-grid">
-            <div class="command-card">
-                <code>/createturnaj &lt;tier&gt; &lt;kit&gt; &lt;hodiny&gt; &lt;skupiny&gt;</code>
-                <p>Vytvoří turnajovou kategorii a přihlašovací místnost s tlačítkem. Automaticky pingne příslušnou roli a po uplynutí hodin vylosuje hráče do 1v1 zápasů.</p>
-            </div>
-            <div class="command-card">
-                <code>/deleteturnaj &lt;kit&gt;</code>
-                <p>Smaže probíhající turnaj i s jeho vytvořenými místnostmi a kategorií pro daný kit.</p>
-            </div>
-            <div class="command-card">
-                <code>/turnajresult &lt;kit&gt; &lt;ziskany_tier&gt; &lt;hrac1&gt; [hrac2] [hrac3]</code>
-                <p>Odešle výsledky z turnaje do result místnosti, udělá změnu tierů a rozdá vítězům role.</p>
-            </div>
+            <div class="command-card"><code>/createturnaj &lt;tier&gt; &lt;kit&gt; &lt;hodiny&gt; &lt;skupiny&gt;</code><p>Vytvoří turnajovou kategorii a přihlašovací místnost s tlačítkem. Automaticky pingne příslušnou roli a po uplynutí hodin vylosuje hráče do 1v1 zápasů.</p></div>
+            <div class="command-card"><code>/deleteturnaj &lt;kit&gt;</code><p>Smaže probíhající turnaj i s jeho vytvořenými místnostmi a kategorií pro daný kit.</p></div>
+            <div class="command-card"><code>/turnajresult &lt;kit&gt; &lt;ziskany_tier&gt; &lt;hrac1&gt; [hrac2] [hrac3]</code><p>Odešle výsledky z turnaje do result místnosti, udělá změnu tierů a rozdá vítězům role.</p></div>
         </div>
 
         <!-- ⚔️ TESTING & TICKET PŘÍKAZY -->
         <div class="section-title" id="testing">⚔️ Testing & Ticket Příkazy</div>
         <div class="commands-grid">
-            <div class="command-card">
-                <code>/result &lt;discord_hrac&gt; &lt;kit&gt; &lt;tier&gt;</code>
-                <p>Zaznamená výsledek tier testu. Odešle hlášení do result místnosti, přidělí novou roli, přičte testerovi statistiku a místnost po chvíli smaže.</p>
-            </div>
-            <div class="command-card">
-                <code>/hticketsend</code>
-                <p>Odešle do nastavené místnosti interaktivní menu s výběrem kitů pro otevírání HT ticketů.</p>
-            </div>
-            <div class="command-card">
-                <code>/edituser &lt;discord_hrac&gt; [nove_ign] [kit] [novy_tier]</code>
-                <p>Umožňuje ručně upravit profil hráče – změnit jeho propojené Minecraft IGN nebo mu přepsat tier pro zvolený kit (včetně role).</p>
-            </div>
-            <div class="command-card">
-                <code>/close</code>
-                <p>Zavře aktuální testovací nebo ticketovou místnost a automaticky nastaví hráči cooldown.</p>
-            </div>
-            <div class="command-card">
-                <code>/add &lt;uzivatel&gt;</code>
-                <p>Přidá uživateli nebo testerovi přístup do aktuální testovací nebo ticketové místnosti.</p>
-            </div>
-            <div class="command-card">
-                <code>/remove &lt;uzivatel&gt;</code>
-                <p>Odebere uživateli přístup z aktuální testovací nebo ticketové místnosti.</p>
-            </div>
-            <div class="command-card">
-                <code>/removecooldown &lt;kit&gt; &lt;discord_hrac&gt; &lt;typ&gt;</code>
-                <p>Manuálně odstraní aktivní cooldown vybranému hráči pro daný kit.</p>
-            </div>
+            <div class="command-card"><code>/result &lt;discord_hrac&gt; &lt;kit&gt; &lt;tier&gt;</code><p>Zaznamená výsledek tier testu. Odešle hlášení do result místnosti, přidělí novou roli, přičte testerovi statistiku a místnost po chvíli smaže.</p></div>
+            <div class="command-card"><code>/hticketsend</code><p>Odešle do nastavené místnosti interaktivní menu s výběrem kitů pro otevírání HT ticketů.</p></div>
+            <div class="command-card"><code>/edituser &lt;discord_hrac&gt; [nove_ign] [kit] [novy_tier]</code><p>Umožňuje ručně upravit profil hráče – změnit jeho propojené Minecraft IGN nebo mu přepsat tier pro zvolený kit (včetně role).</p></div>
+            <div class="command-card"><code>/close</code><p>Zavře aktuální testovací nebo ticketovou místnost a automaticky nastaví hráči cooldown.</p></div>
+            <div class="command-card"><code>/add &lt;uzivatel&gt;</code><p>Přidá uživateli nebo testerovi přístup do aktuální testovací nebo ticketové místnosti.</p></div>
+            <div class="command-card"><code>/remove &lt;uzivatel&gt;</code><p>Odebere uživateli přístup z aktuální testovací nebo ticketové místnosti.</p></div>
+            <div class="command-card"><code>/removecooldown &lt;kit&gt; &lt;discord_hrac&gt; &lt;typ&gt;</code><p>Manuálně odstraní aktivní cooldown vybranému hráči pro daný kit.</p></div>
         </div>
 
         <!-- 📊 HRÁČSKÉ PŘÍKAZY & STATISTIKY -->
         <div class="section-title" id="hracske">📊 Hráčské Příkazy & Statistiky</div>
         <div class="commands-grid">
-            <div class="command-card">
-                <code>/verify &lt;minecraft_ign&gt;</code>
-                <p>Propojí tvůj Discord účet s tvým Minecraft nickem (IGN).</p>
+            <div class="command-card"><code>/verify &lt;minecraft_ign&gt;</code><p>Propojí tvůj Discord účet s tvým Minecraft nickem (IGN).</p>
             </div>
-            <div class="command-card">
-                <code>/cooldown &lt;player&gt;</code>
-                <p>Zobrazí přehledný výpis všech aktivních LT a HT cooldownů zvoleného hráče.</p>
-            </div>
-            <div class="command-card">
-                <code>/testerleaderboard &lt;obdobi&gt;</code>
-                <p>Zobrazí žebříček nejaktivnějších testerů za tento měsíc, minulý měsíc nebo celkově.</p>
-            </div>
+            <div class="command-card"><code>/cooldown &lt;player&gt;</code><p>Zobrazí přehledný výpis všech aktivních LT a HT cooldownů zvoleného hráče.</p></div>
+            <div class="command-card"><code>/testerleaderboard &lt;obdobi&gt;</code><p>Zobrazí žebříček nejaktivnějších testerů za tento měsíc, minulý měsíc nebo celkově.</p></div>
         </div>
-
     </div>
 
-    <footer>
-        <p>&copy; 2026 TierList Bot. Všechna práva vyhrazena.</p>
-    </footer>
-
+    <footer><p>&copy; 2026 TierList Bot. Všechna práva vyhrazena.</p></footer>
 </body>
 </html>
