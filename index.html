@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TierBot - Minecraft Tier List & Turnaje</title>
+    <style>
+        :root {
+            --bg-color: #0d0614;
+            --card-bg: #160b24;
+            --purple-primary: #8b5cf6;
+            --purple-hover: #7c3aed;
+            --text-main: #f3e8ff;
+            --text-muted: #c4b5fd;
+            --border-color: #2e1065;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-main); line-height: 1.6; }
+        header { display: flex; justify-content: space-between; align-items: center; padding: 20px 50px; background: rgba(13, 6, 20, 0.8); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border-color); position: sticky; top: 0; z-index: 100; }
+        .logo { font-size: 1.5rem; font-weight: bold; color: var(--purple-primary); text-transform: uppercase; letter-spacing: 1px; }
+        nav a { color: var(--text-muted); text-decoration: none; margin-left: 25px; font-weight: 500; transition: color 0.2s; }
+        nav a:hover { color: var(--text-main); }
+        .discord-btn { background-color: var(--purple-primary); color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600; transition: background 0.2s; }
+        .discord-btn:hover { background-color: var(--purple-hover); }
+        
+        .hero { text-align: center; padding: 100px 20px 60px 20px; max-width: 800px; margin: 0 auto; }
+        .hero h1 { font-size: 3.5rem; margin-bottom: 20px; color: white; }
+        .hero p { font-size: 1.2rem; color: var(--text-muted); margin-bottom: 30px; }
+        
+        .btn-group { display: flex; justify-content: center; gap: 15px; }
+        .btn-primary { background-color: var(--purple-primary); color: white; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; box-shadow: 0 0 20px rgba(139, 92, 246, 0.4); transition: transform 0.2s, background 0.2s; }
+        .btn-primary:hover { transform: translateY(-2px); background-color: var(--purple-hover); }
+        .btn-secondary { background-color: var(--card-bg); color: var(--text-main); border: 1px solid var(--border-color); padding: 12px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; transition: background 0.2s; }
+        .btn-secondary:hover { background-color: #22113b; }
+
+        .container { max-width: 1000px; margin: 0 auto; padding: 40px 20px; }
+        h2 { font-size: 2rem; margin-bottom: 30px; text-align: center; color: white; }
+        
+        .commands-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .command-card { background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 25px; transition: border-color 0.2s; }
+        .command-card:hover { border-color: var(--purple-primary); }
+        .command-card code { background: #2e1065; color: #ddd6fe; padding: 4px 8px; border-radius: 4px; font-family: monospace; font-size: 1.1rem; }
+        .command-card p { margin-top: 12px; color: var(--text-muted); font-size: 0.95rem; }
+        
+        footer { text-align: center; padding: 40px; color: var(--text-muted); border-top: 1px solid var(--border-color); margin-top: 60px; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo">⚡ TierBot</div>
+        <nav>
+            <a href="#uvod">Úvod</a>
+            <a href="#commandy">Příkazy</a>
+            <a href="https://discord.com" target="_blank" class="discord-btn">Discord</a>
+        </nav>
+    </header>
+
+    <section class="hero" id="uvod">
+        <h1>Nejlepší Minecraft Tier List Bot</h1>
+        <p>Automatické fronty, turnajový systém s 1v1 bracketingem, přehledné testy a 24/7 provoz na Renderu.</p>
+        <div class="btn-group">
+            <a href="#commandy" class="btn-primary">Prohlédnout Příkazy</a>
+            <a href="https://github.com/adrison99/tierlistbot" target="_blank" class="btn-secondary">GitHub Repozitář</a>
+        </div>
+    </section>
+
+    <div class="container" id="commandy">
+        <h2>Seznam Příkazů</h2>
+        <div class="commands-grid">
+            <div class="command-card">
+                <code>/verify &lt;ign&gt;</code>
+                <p>Propojí tvůj Discord účet s tvým Minecraft nickem (IGN).</p>
+            </div>
+            <div class="command-card">
+                <code>/openqueue &lt;kit&gt;</code>
+                <p>Otevře čekací frontu pro daný kit s interaktivními tlačítky.</p>
+            </div>
+            <div class="command-card">
+                <code>/createturnaj</code>
+                <p>Vytvoří turnajovou kategorii, signup místnost a automaticky losuje 1v1 zápasy.</p>
+            </div>
+            <div class="command-card">
+                <code>/result &lt;hráč&gt; &lt;kit&gt; &lt;tier&gt;</code>
+                <p>Zaznamená výsledek testu, přidělí roli a pošle hlášení do result místnosti.</p>
+            </div>
+            <div class="command-card">
+                <code>/turnajresult</code>
+                <p>Vyhodnotí turnaj, odešle špičkový výsledek a rozdá výhercům role.</p>
+            </div>
+            <div class="command-card">
+                <code>/cooldown &lt;hráč&gt;</code>
+                <p>Zobrazí všechny aktivní LT a HT cooldowny daného hráče.</p>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2026 TierBot. Všechna práva vyhrazena. Vytvořeno pro kompetitivní Minecraft server.</p>
+    </footer>
+
+</body>
+</html>
