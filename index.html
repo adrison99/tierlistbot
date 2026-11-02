@@ -95,6 +95,7 @@
         <!-- ⚙️ NASTAVOVACÍ PŘÍKAZY -->
         <div class="section-title" id="nastavovaci">⚙️ Nastavovací Příkazy</div>
         <div class="commands-grid">
+            <div class="command-card"><code>/github &lt;token&gt; &lt;repozitar&gt;</code><p>Propojí bota s tvým GitHub repozitářem pomocí tokenu pro pokročilou synchronizaci.</p></div>
             <div class="command-card"><code>/databaseinfo</code><p>Vygeneruje textový záložní kód obsahující kompletní nastavení serveru, data hráčů a statistiky testerů. Bot ti ho pošle do soukromých zpráv (DM).</p></div>
             <div class="command-card"><code>/database &lt;kod&gt;</code><p>Hromadně obnoví veškeré nastavení, kity, role a data hráčů ze záložního kódu z /databaseinfo.</p></div>
             <div class="command-card"><code>/language &lt;jazyk&gt;</code><p>Změní výchozí jazyk bota pro daný server (např. Čeština, Angličtina, Slovenčina atd.).</p></div>
@@ -132,6 +133,8 @@
         <div class="section-title" id="testing">⚔️ Testing & Ticket Příkazy</div>
         <div class="commands-grid">
             <div class="command-card"><code>/result &lt;discord_hrac&gt; &lt;kit&gt; &lt;tier&gt;</code><p>Zaznamená výsledek tier testu. Odešle hlášení do result místnosti, přidělí novou roli, přičte testerovi statistiku a místnost po chvíli smaže.</p></div>
+            <div class="command-card"><code>/addtest &lt;tester&gt; &lt;mesic_rok&gt;</code><p>Ručně přidá testerovi test do statistik za zadané období ve formátu <code>MM/YYYY</code> (např. 06/2026).</p></div>
+            <div class="command-card"><code>/removetest &lt;tester&gt; &lt;mesic_rok&gt;</code><p>Ručně odebere testerovi 1 test ze statistik za zadané období ve formátu <code>MM/YYYY</code>.</p></div>
             <div class="command-card"><code>/hticketsend</code><p>Odešle do nastavené místnosti interaktivní menu s výběrem kitů pro otevírání HT ticketů.</p></div>
             <div class="command-card"><code>/edituser &lt;discord_hrac&gt; [nove_ign] [kit] [novy_tier]</code><p>Umožňuje ručně upravit profil hráče – změnit jeho propojené Minecraft IGN nebo mu přepsat tier pro zvolený kit (včetně role).</p></div>
             <div class="command-card"><code>/close</code><p>Zavře aktuální testovací nebo ticketovou místnost a automaticky nastaví hráči cooldown.</p></div>
